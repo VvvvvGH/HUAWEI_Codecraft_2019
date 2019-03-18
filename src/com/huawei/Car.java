@@ -2,6 +2,7 @@ package com.huawei;
 
 
 import java.util.ArrayList;
+import java.util.Objects;
 
 public class Car implements Comparable {
     private int id;
@@ -73,7 +74,8 @@ public class Car implements Comparable {
                 return 1;
             else
                 return 0;
-            }
+        }
+//        }
         return 0;
     }
 

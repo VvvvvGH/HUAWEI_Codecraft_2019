@@ -18,6 +18,8 @@ public class TrafficMap {
     private HashMap<Integer, Road> roads = new HashMap<>();
     private HashMap<Integer, Car> cars = new HashMap<>();
 
+    private final int MAX_CAR_LIMIT = 20;
+
 
     public void initGraph() {
         crossMap.forEach((cross, crossObj) -> graph.addVertex(crossObj));
@@ -62,7 +64,7 @@ public class TrafficMap {
             count = 0;
             while (true) {
                 Car car = priorityQueue.peek();
-                if (car == null || car.getPlanTime() > time || count >= 11)
+                if (car == null || car.getPlanTime() > time || count >= MAX_CAR_LIMIT)
                     break;
 
                 car.setStartTime(time);
@@ -76,7 +78,7 @@ public class TrafficMap {
         }
     }
 
-    public void firstSchedule() {
+    public void preSchedule() {
         this.getCars().forEach(
                 (carId, car) -> priorityQueue.offer(car)
         );
@@ -91,7 +93,7 @@ public class TrafficMap {
             count = 0;
             while (true) {
                 Car car = priorityQueue.peek();
-                if (car == null || car.getPlanTime() > time || count >= 11)
+                if (car == null || car.getPlanTime() > time || count >= MAX_CAR_LIMIT)
                     break;
 
                 car.setStartTime(time);
@@ -122,17 +124,17 @@ public class TrafficMap {
             }
         });
 
-        //调整1/2的路的长度为原来一半
+        //调整1/2的路的长度为原来1/3
         int numOfRoadsToAdjust = roads.size() / 2;
         for (int i = 0; i < numOfRoadsToAdjust; i++) {
             Road road = roads.get(list.get(i).getKey());
             CrossRoads from = crossMap.get(road.getStart());
             CrossRoads to = crossMap.get(road.getEnd());
             DefaultWeightedEdge edge = graph.getEdge(from, to);
-            graph.setEdgeWeight(edge, road.getLen() / 2.0);
+            graph.setEdgeWeight(edge, road.getLen() / 1.5);
             if (road.isBidirectional()) {
                 DefaultWeightedEdge opposeEdge = graph.getEdge(to, from);
-                graph.setEdgeWeight(opposeEdge, road.getLen() / 2.0);
+                graph.setEdgeWeight(opposeEdge, road.getLen() / 1.5);
             }
         }
     }

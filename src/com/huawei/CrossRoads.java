@@ -1,6 +1,7 @@
 package com.huawei;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 public class CrossRoads {
     private int id;
@@ -24,6 +25,13 @@ public class CrossRoads {
         return roadIds;
     }
 
+    //    public void addRoad(Road road) {
+//        roads.put(road.getId(), road);
+//    }
+//
+//    public Road getRoad(int roadId) {
+//        return roads.get(roadId);
+//    }
 
     public int getId() {
         return id;

@@ -79,7 +79,10 @@ public class Main {
         // TODO: calc
         trafficMap.initGraph();
         //运行规划并调整weight
-        trafficMap.firstSchedule();
+        trafficMap.preSchedule();
+        trafficMap.preSchedule();
+        trafficMap.preSchedule();
+//               trafficMap.preSchedule();
         trafficMap.schedule();
 
         trafficMap.getCars().forEach(
