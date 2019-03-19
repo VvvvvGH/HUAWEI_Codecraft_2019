@@ -42,14 +42,15 @@ public class TrafficMap {
     public void setCarPath(Car car, GraphPath path) {
         // Clean original path
         car.getPath().clear();
-        //Add new path
+        //Find the road between two crossroads
         for (int i = 0; i < path.getLength(); i++) {
-            ArrayList<Integer> list1 = ((CrossRoads) path.getVertexList().get(i)).getRoadIds();
-            ArrayList<Integer> list2 = ((CrossRoads) path.getVertexList().get(i + 1)).getRoadIds();
-            ArrayList<Integer> list3 = new ArrayList<>(list1);
-            list3.retainAll(list2);
-            int road = list3.get(0);
-            car.addPath(road);
+            for (int roadId1: ((CrossRoads) path.getVertexList().get(i)).getRoadIds()) {
+                for (int roadId2:((CrossRoads) path.getVertexList().get(i+1)).getRoadIds()){
+                    if (roadId1==roadId2&&roadId1!=-1){
+                        car.addPath(roadId1);
+                    }
+                }
+            }
         }
     }
 
