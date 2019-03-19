@@ -8,7 +8,7 @@ public class JCar extends Car {
 
     private CarState state;
     private int currentSpeed;
-    private int passedLength = -1;
+    private int position = -1;
     private int passedLengthBeforeCross = -1;
 
     public JCar(String line){
@@ -18,7 +18,7 @@ public class JCar extends Car {
 
     public static Comparator<JCar> idComparator = Comparator.comparing(JCar::getId);
 
-    public static Comparator<JCar> crossDisComparator = (o1,o2) -> o2.getPassedLength() - o1.getPassedLength();
+    public static Comparator<JCar> crossDisComparator = (o1,o2) -> o2.getPosition() - o1.getPosition();
 
     public static Comparator<JCar> startTimeComparator = (o1,o2) -> o2.getStartTime() - o1.getStartTime();
 
@@ -40,12 +40,12 @@ public class JCar extends Car {
         return currentSpeed;
     }
 
-    public void setPassedLength(int passedLength) {
-        this.passedLength = passedLength;
+    public void setPosition(int position) {
+        this.position = position;
     }
 
-    public int getPassedLength() {
-        return passedLength;
+    public int getPosition() {
+        return position;
     }
 
     public int getPassedLengthBeforeCross() {
