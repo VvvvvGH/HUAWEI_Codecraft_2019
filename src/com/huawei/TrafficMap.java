@@ -18,7 +18,7 @@ public class TrafficMap {
     private HashMap<Integer, Road> roads = new HashMap<>();
     private HashMap<Integer, Car> cars = new HashMap<>();
 
-    private final int MAX_CAR_LIMIT = 20;
+    private final int MAX_CAR_LIMIT = 26;
 
 
     public void initGraph() {
@@ -59,6 +59,8 @@ public class TrafficMap {
         );
         int time = 0;
         int count = 0;
+        //在每一分类的计划时间后暂停一个时间单位，让前面的慢车先跑
+        int planTime = 1;
         while (!priorityQueue.isEmpty()) {
             time++;
             count = 0;
@@ -71,7 +73,10 @@ public class TrafficMap {
 
                 GraphPath path = shortestDistancePath(car.getFrom(), car.getTo());
                 setCarPath(car, path);
-
+                if (planTime<car.getPlanTime()){
+                    planTime = car.getPlanTime();
+                    time++;
+                }
                 priorityQueue.remove(car);
                 count++;
             }
@@ -108,8 +113,6 @@ public class TrafficMap {
                     else
                         roadCounter.put(road, 1);
                 });
-
-
                 priorityQueue.remove(car);
                 count++;
             }
