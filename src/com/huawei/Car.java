@@ -4,7 +4,7 @@ package com.huawei;
 import java.util.ArrayList;
 import java.util.Objects;
 
-public class Car implements Comparable {
+public class Car implements Comparable<Car> {
     private int id;
     private int from;
     private int to;
@@ -66,17 +66,16 @@ public class Car implements Comparable {
     }
 
     @Override
-    public int compareTo(Object o) {
-        if (o instanceof Car) {
-            if (((Car) o).getPlanTime() > getPlanTime())
-                return -1;
-            else if (((Car) o).getPlanTime() < getPlanTime())
-                return 1;
-            else
-                return 0;
-        }
-//        }
-        return 0;
+    public int compareTo(Car car) {
+        // 按计划时间排序，计划时间内按车辆速度排序
+        if (car.getPlanTime() / (car.getTopSpeed() * 1.0) > getPlanTime() / (getTopSpeed() * 1.0))
+            return -1;
+        else if (car.getPlanTime() / (car.getTopSpeed() * 1.0) < getPlanTime() / (getTopSpeed() * 1.0))
+            return 1;
+        else
+            return 0;
+
+
     }
 
     public int getId() {
