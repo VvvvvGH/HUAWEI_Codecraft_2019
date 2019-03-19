@@ -3,18 +3,17 @@ package com.judgment;
 import com.huawei.Main;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Map;
+import java.util.TreeMap;
 
 public class Judger {
 
-    private ArrayList<JCrossRoads> crossList = new ArrayList<>();
-    private ArrayList<JRoad> roadList = new ArrayList<>();
-    private ArrayList<JCar> carList = new ArrayList<>();
+    private TreeMap<Integer, JCrossRoads> crossMap = new TreeMap<>();
+    private TreeMap<Integer, JRoad> roadMap = new TreeMap<>();
+    private TreeMap<Integer, JCar> carMap = new TreeMap<>();
+
 
     private Long scheduleTime;
-    private Long systemScheduleTime;
+    private Long systemScheduleTime = 0L;
     private int unitScheduleTime = 1;
 
     public static void main(String[] args) {
@@ -46,61 +45,76 @@ public class Judger {
         cars.forEach(
                 car -> judger.addCar(new JCar(car))
         );
+        answer.forEach(
+                ans -> judger.updateCarFromAnswer(ans)
+        );
 
         judger.judge();
 
     }
 
-    public void judge(){
-        Collections.sort(roadList);
-        Collections.sort(carList,JCar.IdComparator);
-        while(allCarInEndState()){
-            for (JRoad road : roadList) {
-                for(int i=0;i<road.getNumOfLanes();i++){
-                    ArrayList<JCar> carList = road.getCarOfOnePane(i);
-                    Collections.sort(carList,JCar.CrossDisComparator);
-                    for(JCar car : carList){
+    public void judge() {
 
-                    }
-                }
-            }
+        // TODO: １升序循环整个地图中所有的道路
+        //        ２让所有在道路上的车开始行驶到等待或终止状态
+        driveAllCarOnRoad();
+
+
+        // TODO: 1升序循环所有路口
+        //          2由路口来控制　升序遍历每个路口的所有道路直到所有车为终止状态　同时把过路口的车安排到新的道路
+        for(JCrossRoads cross : crossMap.values()){
+            cross.schedule();
+        }
+
+        driveCarInGarage();
+
+    }
+    public void driveAllCarOnRoad(){
+        for(JRoad road : roadMap.values()){
+            road.moveCars();
         }
     }
 
-    private boolean allCarInEndState(){
-        for(JCar car : carList){
-            if(car.getState() >= 0)
-                return false;
-        }
+    private void driveCarInGarage() {
+
+    }
+
+    private boolean allCarInEndState() {
         return true;
     }
 
-    public void addCross(JCrossRoads cross) {
-        crossList.add(cross);
+    public void updateCarFromAnswer(String answer) {
+        String[] vars = answer.split(",");
+        int carId = Integer.parseInt(vars[0]);
+        JCar car = carMap.get(carId);
+        car.setStartTime(Integer.parseInt(vars[1]));
+
+        for (int i = 2; i < vars.length; i++) {
+            if (Integer.parseInt(vars[i]) > 0) {
+                car.addPath((Integer.parseInt(vars[i])));
+            }
+        }
+
     }
 
-    public JCrossRoads getCross(int crossId) {
-        return crossList.get(crossId);
-    }
 
     public void addRoad(JRoad road) {
-        roadList.add(road);
+        roadMap.put(road.getId(), road);
     }
 
     public JRoad getRoad(int roadId) {
-        return roadList.get(roadId);
+        return roadMap.get(roadId);
     }
 
     public void addCar(JCar car) {
-        carList.add(car);
+        carMap.put(car.getId(), car);
     }
 
     public JCar getCar(int carId) {
-        return carList.get(carId);
+        return carMap.get(carId);
     }
 
-    public ArrayList<JCar> getCarList() {
-        return carList;
+    public void addCross(JCrossRoads cross){
+        crossMap.put(cross.getId(),cross);
     }
-
 }

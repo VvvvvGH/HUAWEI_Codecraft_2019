@@ -12,9 +12,13 @@ public class JCrossRoads extends CrossRoads implements Comparable<JCrossRoads>{
         super(line);
     }
 
-
     @Override
     public int compareTo(JCrossRoads c) {
         return this.getId() - c.getId();
+    }
+
+    // 调度四条道路
+    public void schedule(){
+
     }
 }

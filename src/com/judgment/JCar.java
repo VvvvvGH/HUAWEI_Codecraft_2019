@@ -2,36 +2,27 @@ package com.judgment;
 
 import com.huawei.Car;
 
-import java.util.ArrayList;
 import java.util.Comparator;
 
 public class JCar extends Car {
 
-    private int state = -2; // 0:wait 1:move -1:end -2:lock　－３:final
+    private CarState state;
     private int currentSpeed;
-    private ArrayList<String> path = new ArrayList<>();
-    private int passedLength = 0;
+    private int passedLength = -1;
+    private int passedLengthBeforeCross = -1;
 
     public JCar(String line){
         super(line);
     }
 
 
-    public static Comparator<JCar> IdComparator = new Comparator<JCar>() {
-        @Override
-        public int compare(JCar o1, JCar o2) {
-            return o1.getId() - o2.getId();
-        }
-    };
+    public static Comparator<JCar> idComparator = Comparator.comparing(JCar::getId);
 
-    public static Comparator<JCar> CrossDisComparator = new Comparator<JCar>() {
-        @Override
-        public int compare(JCar o1, JCar o2) {
-            return o2.getPassedLength() - o1.getPassedLength();
-        }
-    };
+    public static Comparator<JCar> crossDisComparator = (o1,o2) -> o2.getPassedLength() - o1.getPassedLength();
 
-    public void setState(int state) {
+    public static Comparator<JCar> startTimeComparator = (o1,o2) -> o2.getStartTime() - o1.getStartTime();
+
+    public void setState(CarState state) {
         this.state = state;
     }
 
@@ -40,7 +31,7 @@ public class JCar extends Car {
         this.currentSpeed = currentSpeed;
     }
 
-    public int getState() {
+    public CarState getState() {
         return state;
     }
 
@@ -55,5 +46,13 @@ public class JCar extends Car {
 
     public int getPassedLength() {
         return passedLength;
+    }
+
+    public int getPassedLengthBeforeCross() {
+        return passedLengthBeforeCross;
+    }
+
+    public void setPassedLengthBeforeCross(int passedLengthBeforeCross) {
+        this.passedLengthBeforeCross = passedLengthBeforeCross;
     }
 }

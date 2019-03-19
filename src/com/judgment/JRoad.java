@@ -4,37 +4,41 @@ import com.huawei.Road;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.PriorityQueue;
 
 public class JRoad extends Road implements Comparable<JRoad> {
 
-    private HashMap<Integer, ArrayList<JCar>> paneMap = new HashMap<>();
+    private HashMap<Lane, ArrayList<JCar>> laneMap = new HashMap<>();
+
+    private PriorityQueue<JCar> waitQueue = new PriorityQueue<>();
 
     public JRoad(String line) {
         super(line);
     }
 
-    public void setCar(JCar car, int pane, JCar frontCar) {
-        int speed = car.getCurrentSpeed() - frontCar.getCurrentSpeed() >0 ? frontCar.getCurrentSpeed() : car.getCurrentSpeed();
-        car.setCurrentSpeed(speed);
-        paneMap.get(pane).add(car);
+    public boolean setCar(JCar car) {
+        for(int i = 0; i < laneMap.size() ; i++){
+            ArrayList<JCar> paneCars = laneMap.get(i);
+            JCar frontCar = paneCars.get(paneCars.size() - 1);
+            if(paneCars.size()==0 || frontCar.getPassedLength() > 0) {
+                int speed = car.getCurrentSpeed() - frontCar.getCurrentSpeed() >0 ? frontCar.getCurrentSpeed() : car.getCurrentSpeed();
+                car.setCurrentSpeed(speed);
+                paneCars.add(car);
+                return true;
+            }
+        }
+        return false;
     }
 
-    public void moveCar(JCar car, JCar frontCar) {
-        int len = car.getCurrentSpeed();
-        if(frontCar!=null && len > frontCar.getPassedLength() - car.getPassedLength()){
-            car.setPassedLength(frontCar.getPassedLength() - 1);
-            car.setState(0);
-        }else if (len > this.getLen() - car.getPassedLength()) {
-            car.setPassedLength(this.getLen());
-            car.setState(0);
-        } else{
-            car.setPassedLength(car.getPassedLength() + len);
-            car.setState(-1);
+    public void moveCars() {
+        for(Lane lane : laneMap.keySet()){
+            // TODO
         }
     }
 
-    public ArrayList<JCar> getCarOfOnePane(int i) {
-        return paneMap.get(i);
+
+    public ArrayList<JCar> getCarOfPane(int i) {
+        return laneMap.get(i);
     }
 
     @Override
