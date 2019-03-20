@@ -18,7 +18,7 @@ public class TrafficMap {
     private HashMap<Integer, Road> roads = new HashMap<>();
     private HashMap<Integer, Car> cars = new HashMap<>();
 
-    private final int MAX_CAR_LIMIT = 20;
+    private final int MAX_CAR_LIMIT = 1;
 
 
     public void initGraph() {
@@ -46,7 +46,7 @@ public class TrafficMap {
         for (int i = 0; i < path.getLength(); i++) {
             for (int roadId1: ((CrossRoads) path.getVertexList().get(i)).getRoadIds()) {
                 for (int roadId2:((CrossRoads) path.getVertexList().get(i+1)).getRoadIds()){
-                    if (roadId1==roadId2&&roadId1!=-1){
+                    if (roadId1 == roadId2&&roadId1!=-1){
                         car.addPath(roadId1);
                     }
                 }

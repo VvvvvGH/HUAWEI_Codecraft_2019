@@ -1,14 +1,14 @@
-package com.judgment;
+package com.huawei;
 
 import java.util.TreeMap;
 
 public class Lane {
 
-    private TreeMap<Integer, JCar> carMap = new TreeMap<>();
+    private TreeMap<Integer, Car> carMap = new TreeMap<>();
     private int s1 = -1;
     private int id;
 
-    public TreeMap<Integer,JCar> getCarMap(){
+    public TreeMap<Integer,Car> getCarMap(){
         return carMap;
     }
 

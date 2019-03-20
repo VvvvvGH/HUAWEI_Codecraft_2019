@@ -1,5 +1,7 @@
 package com.huawei;
 
+import java.util.*;
+
 public class Road {
     private int id;
     private int len;
@@ -8,6 +10,25 @@ public class Road {
     private int start;
     private int end;
     private boolean bidirectional;
+
+    // 车道实现
+    // 如果为双向道路,则存储顺序为start-->end方向的道路，之后是反方向的道路
+    // 如车道为6,路口id顺序为 123123
+    private ArrayList<Lane> laneList;
+
+    // Key 为路的出口路口Id
+    private HashMap<Integer, PriorityQueue<Car>> waitingQueueMap = new HashMap<>();
+
+    public static Comparator<Car> carComparator = new Comparator<Car>() {
+        @Override
+        public int compare(Car o1, Car o2) {
+            if (o1.getPosition() > o2.getPosition())
+                return 1;
+            else if (o1.getPosition() == o2.getPosition() && o1.getLaneId() < o2.getLaneId())
+                return 1;
+            else return -1;
+        }
+    };
 
     public Road(String line) {
         String[] vars = line.split(",");
@@ -19,8 +40,178 @@ public class Road {
         this.end = Integer.parseInt(vars[5]);
         this.bidirectional = vars[6].equals("1");
 
+        System.out.println("DEBUG: Number of lanes: "+numOfLanes);
+
+        if (this.isBidirectional()) {
+            laneList = new ArrayList<>(this.getNumOfLanes() * 2);
+        } else
+            laneList = new ArrayList<>(this.getNumOfLanes());
+        // 从１开始
+        for (int i = 1; i <= this.getNumOfLanes() * 2; i++) {
+            laneList.add(i - 1, new Lane());
+            laneList.get(i - 1).setS1(this.getTopSpeed());
+            laneList.get(i - 1).setId(i);
+        }
+        // Priority queue
+        if (isBidirectional()) {
+            waitingQueueMap.put(getStart(), new PriorityQueue<>(carComparator));
+            waitingQueueMap.put(getEnd(), new PriorityQueue<>(carComparator));
+        }
+        waitingQueueMap.put(getEnd(), new PriorityQueue<>());
     }
 
+    // 出发的车
+    public boolean putCarOnRoad(Car car) {
+        int sv1 = Math.min(car.getTopSpeed(), this.getTopSpeed());
+        Lane lane;
+        for (int i = 0; i < getNumOfLanes(); i++) {
+            // Get lane
+            if (isBidirectional()) {
+                lane = getLaneListBy(car.getFrom()).get(i);
+            } else
+                lane = laneList.get(i);
+            TreeMap<Integer, Car> carMap = lane.getCarMap();
+            Integer higher = carMap.descendingKeySet().higher(0);
+            if (higher != null) {
+                if (higher > 1) {
+                    // 前方有车 而且车道有位置
+                    Car frontCar = carMap.get(higher);
+                    CarState state = frontCar.getState();
+                    int dist = frontCar.getPosition() - 1;
+                    if (sv1 <= dist) {
+                        car.setPosition(sv1);
+                        car.setState(CarState.END);
+                    } else {
+                        // 路上车全都是处于END State
+                        if (state == CarState.END) {
+                            car.setPosition(frontCar.getPosition() - 1);
+                            car.setState(CarState.END);
+                            car.setLaneId(lane.getId());
+                            car.setCurrentSpeed(sv1);
+                        }
+                    }
+                    return true;
+                } else
+                    // 该车道已满
+                    continue;
+            } else {
+                // 车可以上路，设置状态
+                if (sv1 <= this.getLen()) {
+                    car.setPosition(sv1);
+                    car.setState(CarState.END);
+                    car.setLaneId(lane.getId());
+                    car.setCurrentSpeed(sv1);
+                    return true;
+                } else {
+                    //官方论坛的人回答说不会出现这种情况
+                    System.err.println("Road#putCarOnRoad#error");
+                }
+            }
+        }
+        return false;
+    }
+
+    // 对单独车道处理
+    public void moveCarsOnRoad(int laneId, int crossRoadId) {
+        Lane lane = getLaneListBy(crossRoadId).get(laneId - 1);
+        TreeMap<Integer, Car> carMap = lane.getCarMap();
+        int s1 = lane.getS1();   // 当前路段的最大行驶距离或者车子与前车之间的最大可行驶距离
+        for (Integer position : carMap.descendingKeySet()) {
+            Car car = carMap.get(position);
+            int sv1 = car.getCurrentSpeed(); // 当前车速在当前道路的最大行驶距离
+            Integer higher = carMap.descendingKeySet().higher(position);
+            if (higher != null) { // 前方有车
+                Car frontCar = carMap.get(higher);
+                CarState state = frontCar.getState();
+                int dist = frontCar.getPosition() - car.getPosition() - 1;
+                if (sv1 <= dist) {
+                    car.setPosition(sv1 + car.getPosition());
+                    car.setState(CarState.END);
+                } else {
+                    // 会碰上车。
+                    if (state == CarState.END) {
+                        car.setPosition(frontCar.getPosition() - 1);
+                        car.setState(CarState.END);
+                    } else if (state == CarState.WAIT) {
+                        car.setState(CarState.WAIT);
+                    } else {
+                        System.err.println("Road#moveCarsOnRoad#error");
+                    }
+                }
+            } else {
+                if (sv1 <= this.getLen() - position) {
+                    car.setPosition(sv1 + car.getPosition());
+                    car.setState(CarState.END);
+                } else { // 可以出路口
+                    car.setState(CarState.WAIT);
+                }
+            }
+            carMap.remove(position);
+            carMap.put(car.getPosition(), car);
+        }
+
+    }
+
+    public void moveCarsOnRoad() {
+        for (int i = 1; i <= getNumOfLanes(); i++) {
+            moveCarsOnRoad(i, getEnd());
+            if (isBidirectional()) {
+                moveCarsOnRoad(i, getStart());
+            }
+        }
+    }
+
+    public int compareTo(Road r) {
+        return this.getId() - r.getId();
+    }
+
+    public void offerWaitingQueue(int crossRoadId) {
+        // 把车放入等待队列， 需要根据车道进行排序
+        PriorityQueue<Car> waitingQueue = waitingQueueMap.get(crossRoadId);
+        ArrayList<Lane> lanes = getLaneListBy(crossRoadId);
+        lanes.forEach(
+                lane -> {
+                    Map<Integer, Car> carMap = lane.getCarMap();
+                    waitingQueue.addAll(carMap.values());
+                }
+        );
+    }
+
+    public ArrayList<Lane> getLaneListBy(int crossRoadId) {
+        System.out.println("DEBUG: laneList size: "+laneList.size());
+        if (crossRoadId == getEnd()) {
+            return new ArrayList<Lane>(laneList.subList(0, getNumOfLanes()));
+        } else if (crossRoadId == getStart()) {
+            return new ArrayList<Lane>(laneList.subList(getNumOfLanes(), getNumOfLanes() * 2 ));
+        } else {
+            System.err.println("Road#getLaneListBy#error");
+            return null;
+        }
+    }
+    public ArrayList<Lane> getLaneList(){
+        // Single Road
+        return laneList;
+    }
+
+    public PriorityQueue<Car> getWaitingQueue(int crossId) {
+        return waitingQueueMap.get(crossId);
+    }
+
+    // 把车辆从路上移除
+    //
+    public void removeCarFromRoad(Car car) {
+        laneList.forEach(
+                lane -> {
+                    Map map = lane.getCarMap();
+                    if (map.containsValue(car)) {
+                        map.remove(car);
+                    } else {
+                        System.err.println("Road#removeCarFromRoad#error");
+                    }
+                }
+        );
+
+    }
 
     public int getId() {
         return id;

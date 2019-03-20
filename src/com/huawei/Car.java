@@ -2,9 +2,9 @@ package com.huawei;
 
 
 import java.util.ArrayList;
-import java.util.Objects;
+import java.util.Comparator;
 
-public class Car implements Comparable {
+public class Car implements Comparable<Car> {
     private int id;
     private int from;
     private int to;
@@ -13,13 +13,16 @@ public class Car implements Comparable {
 
     private ArrayList<Integer> path = new ArrayList<>();
 
-    boolean started = false;
-    boolean running = false;
-    boolean reachedDest = false;
-    int currentSpeed = 0;
-    int startTime = -1;
-    int endTime = -1;
-    int laneId = -1;
+    private int currentSpeed = 0;
+    private long startTime = -1;
+    private long endTime = -1;
+    private int laneId = -1;
+
+    private CarState state;
+    private int position = -1;
+
+
+    public static Comparator<Car> idComparator = Comparator.comparing(Car::getId);
 
 
     public Car(int id, int start, int to, int topSpeed, int planTime) {
@@ -28,6 +31,7 @@ public class Car implements Comparable {
         this.to = to;
         this.topSpeed = topSpeed;
         this.planTime = planTime;
+        this.state = CarState.IN_GARAGE;
     }
 
     public Car(String line) {
@@ -37,6 +41,7 @@ public class Car implements Comparable {
         this.to = Integer.parseInt(vars[2]);
         this.topSpeed = Integer.parseInt(vars[3]);
         this.planTime = Integer.parseInt(vars[4]);
+        this.state = CarState.IN_GARAGE;
     }
 
     public void addPath(int roadId) {
@@ -65,18 +70,15 @@ public class Car implements Comparable {
         return stringBuilder.toString();
     }
 
-    @Override
-    public int compareTo(Object o) {
-        if (o instanceof Car) {
-            if (((Car) o).getPlanTime() > getPlanTime())
-                return -1;
-            else if (((Car) o).getPlanTime() < getPlanTime())
-                return 1;
-            else
-                return 0;
-        }
-//        }
-        return 0;
+
+    public int compareTo(Car car) {
+        // 根据速度排序
+        if (car.getPlanTime() / (car.getTopSpeed() * 1.0) > getPlanTime() / (getTopSpeed() * 1.0))
+            return -1;
+        else if (car.getPlanTime() / (car.getTopSpeed() * 1.0) < getPlanTime() / (getTopSpeed() * 1.0))
+            return 1;
+        else
+            return 0;
     }
 
     public int getId() {
@@ -87,22 +89,6 @@ public class Car implements Comparable {
         this.id = id;
     }
 
-    public int getStart() {
-        return from;
-    }
-
-    public void setStart(int start) {
-        this.from = start;
-    }
-
-    public int getTo() {
-        return to;
-    }
-
-    public void setTo(int to) {
-        this.to = to;
-    }
-
     public int getFrom() {
         return from;
     }
@@ -111,64 +97,12 @@ public class Car implements Comparable {
         this.from = from;
     }
 
-    public void setPath(ArrayList<Integer> path) {
-        this.path = path;
+    public int getTo() {
+        return to;
     }
 
-    public void setStarted(boolean started) {
-        this.started = started;
-    }
-
-    public void setRunning(boolean running) {
-        this.running = running;
-    }
-
-    public void setReachedDest(boolean reachedDest) {
-        this.reachedDest = reachedDest;
-    }
-
-    public void setCurrentSpeed(int currentSpeed) {
-        this.currentSpeed = currentSpeed;
-    }
-
-    public void setStartTime(int startTime) {
-        this.startTime = startTime;
-    }
-
-    public void setEndTime(int endTime) {
-        this.endTime = endTime;
-    }
-
-    public void setLaneId(int laneId) {
-        this.laneId = laneId;
-    }
-
-    public boolean isStarted() {
-        return started;
-    }
-
-    public boolean isRunning() {
-        return running;
-    }
-
-    public boolean isReachedDest() {
-        return reachedDest;
-    }
-
-    public int getCurrentSpeed() {
-        return currentSpeed;
-    }
-
-    public int getStartTime() {
-        return startTime;
-    }
-
-    public int getEndTime() {
-        return endTime;
-    }
-
-    public int getLaneId() {
-        return laneId;
+    public void setTo(int to) {
+        this.to = to;
     }
 
     public int getTopSpeed() {
@@ -185,5 +119,65 @@ public class Car implements Comparable {
 
     public void setPlanTime(int planTime) {
         this.planTime = planTime;
+    }
+
+    public void setPath(ArrayList<Integer> path) {
+        this.path = path;
+    }
+
+    public int getCurrentSpeed() {
+        return currentSpeed;
+    }
+
+    public void setCurrentSpeed(int currentSpeed) {
+        this.currentSpeed = currentSpeed;
+    }
+
+    public long getStartTime() {
+        return startTime;
+    }
+
+    public void setStartTime(long startTime) {
+        this.startTime = startTime;
+    }
+
+    public long getEndTime() {
+        return endTime;
+    }
+
+    public void setEndTime(int endTime) {
+        this.endTime = endTime;
+    }
+
+    public int getLaneId() {
+        return laneId;
+    }
+
+    public void setLaneId(int laneId) {
+        this.laneId = laneId;
+    }
+
+    public static Comparator<Car> getIdComparator() {
+        return idComparator;
+    }
+
+    public static void setIdComparator(Comparator<Car> idComparator) {
+        Car.idComparator = idComparator;
+    }
+
+    public CarState getState() {
+        return state;
+    }
+
+    public void setState(CarState state) {
+        this.state = state;
+    }
+
+    public int getPosition() {
+        return position;
+    }
+
+    public void setPosition(int position) {
+        this.position = position;
     }
 }

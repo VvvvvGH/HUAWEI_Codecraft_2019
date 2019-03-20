@@ -90,7 +90,7 @@ public class Main {
         );
         // TODO: write answer.txt
         logger.info("Start write output file");
-        answer.add("#(carId,StartTime,RoadId...)");
+//        answer.add("#(carId,StartTime,RoadId...)");
         writeFile(answer, answerPath);
 
         logger.info("End...");
