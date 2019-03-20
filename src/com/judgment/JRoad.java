@@ -6,6 +6,8 @@ import java.util.*;
 
 public class JRoad extends Road implements Comparable<JRoad> {
     // 车道实现
+    // 如果为双向道路,则存储顺序为start-->end方向的道路，之后是反方向的道路
+    // 如车道为6,路口id顺序为 123123
     private ArrayList<Lane> laneList;
 
     // Key 为路的出口路口Id
@@ -24,8 +26,16 @@ public class JRoad extends Road implements Comparable<JRoad> {
 
     public JRoad(String line) {
         super(line);
-        //TODO init the lane;
-        
+        if(this.isBidirectional()) {
+            laneList = new ArrayList<>(this.getNumOfLanes() * 2);
+        }else
+            laneList = new ArrayList<>(this.getNumOfLanes());
+        // 从１开始
+        for (int i = 1; i <= laneList.size(); i++) {
+            laneList.set(i-1,new Lane());
+            laneList.get(i-1).setS1(this.getTopSpeed());
+            laneList.get(i-1).setId(i);
+        }
         // Priority queue
         if(isBidirectional()){
             waitingQueueMap.put(getStart(),new PriorityQueue<JCar>(carComparator));
