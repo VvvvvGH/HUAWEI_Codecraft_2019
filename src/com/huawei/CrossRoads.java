@@ -90,10 +90,11 @@ public class CrossRoads implements Comparable<CrossRoads> {
                         road.getWaitingQueue(getId()).remove(car);
                         // 从路上删除该车
                         road.removeCarFromRoad(car);
-                        // 调动路口更新其车道
-                        road.moveCarsOnRoad(previousLaneId, getId());
+                        
                         stateChanged = true;
                     }
+                    // 调动路口更新其车道
+                    road.moveCarsOnRoad(previousLaneId, getId());
                 }
             }
         }

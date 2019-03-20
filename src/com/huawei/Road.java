@@ -40,7 +40,6 @@ public class Road {
         this.end = Integer.parseInt(vars[5]);
         this.bidirectional = vars[6].equals("1");
 
-        System.out.println("DEBUG: Number of lanes: "+numOfLanes);
 
         if (this.isBidirectional()) {
             laneList = new ArrayList<>(this.getNumOfLanes() * 2);
@@ -178,7 +177,6 @@ public class Road {
     }
 
     public ArrayList<Lane> getLaneListBy(int crossRoadId) {
-        System.out.println("DEBUG: laneList size: "+laneList.size());
         if (crossRoadId == getEnd()) {
             return new ArrayList<Lane>(laneList.subList(0, getNumOfLanes()));
         } else if (crossRoadId == getStart()) {

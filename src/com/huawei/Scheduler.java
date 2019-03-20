@@ -51,19 +51,37 @@ public class Scheduler {
         );
 
         boolean allOut = false;
+        int carInGarage=0;
+        int carWait=0;
+        int carEnd=0;
+        int carOffRoad=0;
         while (!allOut){
+            carInGarage=0;
+            carWait=0;
+            carEnd=0;
+            carOffRoad=0;
             allOut = true;
             for (int carId:scheduler.getCarMap().keySet()) {
-                if (scheduler.getCar(carId).getState()!=CarState.OFF_ROAD)
+                CarState carState = scheduler.getCar(carId).getState();
+                if (carState!=CarState.OFF_ROAD)
                     allOut=false;
+                if(carState==CarState.IN_GARAGE)
+                    carInGarage++;
+                if(carState==CarState.OFF_ROAD)
+                    carOffRoad++;
+                if(carState==CarState.WAIT)
+                    carWait++;
+                if(carState==CarState.END)
+                    carEnd++;
             }
-            scheduler.schedule();
+            System.out.printf("Car State at time %d : OFF_ROAD: %d IN_GARAGE: %d WAIT: %d END: %d\n",scheduler.systemScheduleTime,carOffRoad,carInGarage,carWait,carEnd);
+            scheduler.step();
         }
         System.out.println(scheduler.getSystemScheduleTime());
 
     }
 
-    public void schedule() {
+    public void step() {
         //系统调度时间加1
         systemScheduleTime += UNIT_TIME;
         while (allCarInEndState()) {
