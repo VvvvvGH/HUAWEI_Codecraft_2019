@@ -5,8 +5,8 @@ import com.huawei.Road;
 import java.util.*;
 
 public class JRoad extends Road implements Comparable<JRoad> {
-    // TODO: 车道实现
-    private Lane[] lanes;
+    // 车道实现
+    private ArrayList<Lane> laneList;
 
     // Key 为路的出口路口Id
     private HashMap<Integer,PriorityQueue<JCar>> waitingQueueMap = new HashMap<>();
@@ -24,22 +24,18 @@ public class JRoad extends Road implements Comparable<JRoad> {
 
     public JRoad(String line) {
         super(line);
-        lanes = new Lane[this.getNumOfLanes()];
-        // 从１开始
-        for (int i = 1; i <= lanes.length; i++) {
-            lanes[i - 1].setS1(this.getTopSpeed());
-            lanes[i - 1].setId(i);
-        }
+        //TODO init the lane;
+        
         // Priority queue
         if(isBidirectional()){
-            waitingQueueMap.put(getStart(),new PriorityQueue<>());
-            waitingQueueMap.put(getEnd(),new PriorityQueue<>());
+            waitingQueueMap.put(getStart(),new PriorityQueue<JCar>(carComparator));
+            waitingQueueMap.put(getEnd(),new PriorityQueue<JCar>(carComparator));
         }
         waitingQueueMap.put(getEnd(),new PriorityQueue<>());
 
     }
 
-    // TODO: 1. 出发的车
+    // 		 1. 出发的车
     //       2. 入路的车
     //       3. 需要设置车辆车道Id
     //       4. 需要更新车辆数据
@@ -56,38 +52,53 @@ public class JRoad extends Road implements Comparable<JRoad> {
         }*/
         return false;
     }
-    // TODO: 对单独车道处理
-    public void moveCarsOnRoad(int laneId) {}
+    // 对单独车道处理
+    public void moveCarsOnRoad(int laneId, int crossRoadId) {
+    	Lane lane = getLaneListBy(crossRoadId).get(laneId-1);
+    	TreeMap<Integer, JCar> carMap = lane.getCarMap();
+        int s1 = lane.getS1();   // 当前路段的最大行驶距离或者车子与前车之间的最大可行驶距离
+        for (Integer position : carMap.descendingKeySet()) {
+            JCar car = carMap.get(position);
+            int sv1 = car.getCurrentSpeed(); // 当前车速在当前道路的最大行驶距离
+            Integer higher = carMap.descendingKeySet().higher(position);
+            if (higher != null) { // 前方有车
+            	JCar frontCar = carMap.get(higher);
+            	CarState state = frontCar.getState();
+                int dist = frontCar.getPosition() - car.getPosition()-1;
+                if (sv1 <= dist) {
+                    car.setPosition(sv1 + car.getPosition());
+                    car.setState(CarState.END);
+                } else {
+                	// 会碰上车。
+                	if( state == CarState.END) {
+                		car.setPosition(frontCar.getPosition()-1);
+                		car.setState( CarState.END);
+                	}else if( state == CarState.WAIT){
+                		car.setState( CarState.WAIT);
+                	}else{
+                		System.err.println("Jroad#moveCarsOnRoad#error");
+                	}
+                }
+            } else {
+                if (sv1 <= this.getLen() - position) {
+                    car.setPosition(sv1 + car.getPosition());
+                    car.setState(CarState.END);
+                } else { // 可以出路口
+                    car.setState(CarState.WAIT);
+                }
+            }
+            carMap.remove(position);
+            carMap.put(car.getPosition(), car);
+        }
+    	
+    }
 
     public void moveCarsOnRoad() {
-        for (Lane lane : lanes) {
-            TreeMap<Integer, JCar> carMap = lane.getCarMap();
-            int s1 = lane.getS1();   // 当前路段的最大行驶距离或者车子与前车之间的最大可行驶距离
-            for (Integer position : carMap.descendingKeySet()) {
-                JCar car = carMap.get(position);
-                int sv1 = car.getCurrentSpeed(); // 当前车速在当前道路的最大行驶距离
-                Integer higher = carMap.descendingKeySet().higher(position);
-                if (higher != null) { // 前方有车
-                    int dis = -car.getPosition() - carMap.get(higher).getPosition();
-                    if (sv1 <= dis) {
-                        car.setPosition(sv1 + car.getPosition());
-                        car.setState(CarState.END);
-                    } else {
-                        car.setPosition(dis + car.getPosition());
-                        car.setState(carMap.get(higher).getState());
-                    }
-                } else {
-                    if (sv1 <= this.getLen() - position) {
-                        car.setPosition(sv1 + car.getPosition());
-                        car.setState(CarState.END);
-                    } else { // 可以出路口
-                        car.setPosition(this.getLen());
-                        car.setState(CarState.WAIT);
-                    }
-                }
-                carMap.put(car.getPosition(), car);
-                carMap.remove(position);
-            }
+        for( int i=1 ; i<=getNumOfLanes() ; i++){
+        	moveCarsOnRoad(i, getEnd());
+        	if( isBidirectional()) {
+        		moveCarsOnRoad(i, getStart());
+        	}
         }
     }
 
@@ -95,17 +106,47 @@ public class JRoad extends Road implements Comparable<JRoad> {
     public int compareTo(JRoad r) {
         return this.getId() - r.getId();
     }
-    public void setWaitingQueue() {
-        // TODO: 把车放入等待队列， 需要根据车道进行排序
+    public void offerWaitingQueue(int crossRoadId) {
+        // 把车放入等待队列， 需要根据车道进行排序
+    	PriorityQueue<JCar> waitingQueue = waitingQueueMap.get(crossRoadId);
+    	ArrayList<Lane> lanes = getLaneListBy(crossRoadId);
+    	lanes.forEach( 
+    		lane->{
+    			 Map<Integer,JCar> carMap = lane.getCarMap();
+    			 waitingQueue.addAll(carMap.values());
+    		}
+    	);
     }
-
+    
+    public ArrayList<Lane> getLaneListBy(int crossRoadId) {
+    	// single road 
+		if( crossRoadId == getEnd()) {
+		     return new ArrayList<Lane>( laneList.subList(0, getNumOfLanes()));
+		}else if( crossRoadId == getStart()) {
+			 return new ArrayList<Lane>( laneList.subList(getNumOfLanes(), getNumOfLanes()*2));
+		}else {
+			System.err.println("Jroad#getLaneListBy#error");
+			return null;
+		}
+    }
     public PriorityQueue<JCar> getWaitingQueue(int crossId) {
         return waitingQueueMap.get(crossId);
     }
-    // TODO: 把车辆从路上移除
+    
+    // 把车辆从路上移除
     //
     public void removeCarFromRoad(JCar car){
-
+    	laneList.forEach( 
+    		lane->{
+    			Map map = lane.getCarMap();
+    			if( map.containsValue(car)) {
+    				map.remove(car);
+    			}else {
+    				System.err.println("Jroad#removeCarFromRoad#error");
+    			}
+    		}
+    	);
+    	
     }
-
 }
+

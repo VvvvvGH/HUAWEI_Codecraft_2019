@@ -9,7 +9,6 @@ public class JCar extends Car {
     private CarState state;
     private int currentSpeed;
     private int position = -1;
-    private int laneId =-1;
 
     public JCar(String line){
         super(line);
