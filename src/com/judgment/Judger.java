@@ -75,6 +75,7 @@ public class Judger {
             for (JCrossRoads cross : crossMap.values()) {
                 cross.schedule();
             }
+            driveAllCarOnRoad();
         }
         driveCarInGarage();
 
@@ -82,7 +83,7 @@ public class Judger {
 
     public void driveAllCarOnRoad() {
         for (JRoad road : roadMap.values()) {
-            road.moveCars();
+            road.moveCarsOnRoad();
         }
     }
 
@@ -95,7 +96,7 @@ public class Judger {
             if (car.getPlanTime() <= systemScheduleTime) { // 车辆到达开始时间
                 // 车的第一条路
                 JRoad road = roadMap.get(car.getPath().get(0));
-                if (road.setCar(car)) {
+                if (road.moveToRoad(car)) {
                     // 上路成功,从车库中删除车辆。否则车等待下一时刻才开。
                     garage.remove(car);
                 }

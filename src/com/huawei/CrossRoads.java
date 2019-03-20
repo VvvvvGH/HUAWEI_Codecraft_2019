@@ -5,8 +5,16 @@ import java.util.HashMap;
 
 public class CrossRoads {
     private int id;
-    //路口顺序为 顺时针方向开始。 roadIds[0] 为上方
-    private int[] roadIds = new int[4];
+
+    private HashMap<Integer,RoadPosition> roadDirection = new HashMap<>();
+
+    public enum Turn{
+        LEFT,RIGHT,STRAIGHT
+    }
+
+    public enum RoadPosition{
+        NORTH,WEST,SOUTH,EAST,
+    }
 
     public CrossRoads(int id) {
         this.id = id;
@@ -15,15 +23,20 @@ public class CrossRoads {
     public CrossRoads(String line) {
         String[] vars = line.split(",");
         this.id = Integer.parseInt(vars[0]);
-        for (int i = 1; i < vars.length; i++) {
-            roadIds[i - 1] = Integer.parseInt(vars[i]);
-        }
+        //路口顺序为 顺时针方向，第一个是北方。
+        roadDirection.put(Integer.parseInt(vars[1]),RoadPosition.NORTH);
+        roadDirection.put(Integer.parseInt(vars[2]),RoadPosition.WEST);
+        roadDirection.put(Integer.parseInt(vars[3]),RoadPosition.SOUTH);
+        roadDirection.put(Integer.parseInt(vars[4]),RoadPosition.EAST);
     }
 
-    public int[] getRoadIds() {
-        return roadIds;
+    public Integer[] getRoadIds() {
+        return (Integer[])roadDirection.keySet().toArray();
     }
 
+    public HashMap<Integer, RoadPosition> getRoadDirection() {
+        return roadDirection;
+    }
 
     public int getId() {
         return id;

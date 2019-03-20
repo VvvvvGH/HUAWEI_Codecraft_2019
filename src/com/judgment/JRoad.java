@@ -5,10 +5,11 @@ import com.huawei.Road;
 import java.util.*;
 
 public class JRoad extends Road implements Comparable<JRoad> {
-
+    // TODO: 车道实现
     private Lane[] lanes;
 
-    private PriorityQueue<JCar> waitingQueue = new PriorityQueue<>(carComparator);
+    // Key 为路的出口路口Id
+    private HashMap<Integer,PriorityQueue<JCar>> waitingQueueMap = new HashMap<>();
 
     public static Comparator<JCar> carComparator = new Comparator<JCar>() {
         @Override
@@ -29,9 +30,20 @@ public class JRoad extends Road implements Comparable<JRoad> {
             lanes[i - 1].setS1(this.getTopSpeed());
             lanes[i - 1].setId(i);
         }
+        // Priority queue
+        if(isBidirectional()){
+            waitingQueueMap.put(getStart(),new PriorityQueue<>());
+            waitingQueueMap.put(getEnd(),new PriorityQueue<>());
+        }
+        waitingQueueMap.put(getEnd(),new PriorityQueue<>());
+
     }
 
-    public boolean setCar(JCar car) {
+    // TODO: 1. 出发的车
+    //       2. 入路的车
+    //       3. 需要设置车辆车道Id
+    //       4. 需要更新车辆数据
+    public boolean moveToRoad(JCar car) {
         /*for(int i = 0; i < laneMap.size() ; i++){
             ArrayList<JCar> paneCars = laneMap.get(i);
             JCar frontCar = paneCars.get(paneCars.size() - 1);
@@ -44,8 +56,10 @@ public class JRoad extends Road implements Comparable<JRoad> {
         }*/
         return false;
     }
+    // TODO: 对单独车道处理
+    public void moveCarsOnRoad(int laneId) {}
 
-    public void moveCars() {
+    public void moveCarsOnRoad() {
         for (Lane lane : lanes) {
             TreeMap<Integer, JCar> carMap = lane.getCarMap();
             int s1 = lane.getS1();   // 当前路段的最大行驶距离或者车子与前车之间的最大可行驶距离
@@ -69,7 +83,6 @@ public class JRoad extends Road implements Comparable<JRoad> {
                     } else { // 可以出路口
                         car.setPosition(this.getLen());
                         car.setState(CarState.WAIT);
-                        car.setPassedLengthBeforeCross(this.getLen() - position);
                     }
                 }
                 carMap.put(car.getPosition(), car);
@@ -82,4 +95,17 @@ public class JRoad extends Road implements Comparable<JRoad> {
     public int compareTo(JRoad r) {
         return this.getId() - r.getId();
     }
+    public void setWaitingQueue() {
+        // TODO: 把车放入等待队列， 需要根据车道进行排序
+    }
+
+    public PriorityQueue<JCar> getWaitingQueue(int crossId) {
+        return waitingQueueMap.get(crossId);
+    }
+    // TODO: 把车辆从路上移除
+    //
+    public void removeCarFromRoad(JCar car){
+
+    }
+
 }

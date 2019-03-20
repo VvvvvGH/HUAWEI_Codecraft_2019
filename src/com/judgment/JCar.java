@@ -9,7 +9,7 @@ public class JCar extends Car {
     private CarState state;
     private int currentSpeed;
     private int position = -1;
-    private int passedLengthBeforeCross = -1;
+    private int laneId =-1;
 
     public JCar(String line){
         super(line);
@@ -48,11 +48,4 @@ public class JCar extends Car {
         return position;
     }
 
-    public int getPassedLengthBeforeCross() {
-        return passedLengthBeforeCross;
-    }
-
-    public void setPassedLengthBeforeCross(int passedLengthBeforeCross) {
-        this.passedLengthBeforeCross = passedLengthBeforeCross;
-    }
 }
