@@ -178,6 +178,11 @@ public class Car implements Comparable<Car> {
     }
 
     public void setPosition(int position) {
+        if(position<=0) {
+            System.out.println("Current position: "+getPosition());
+            System.out.println("Illegal position: "+position);
+            throw new IllegalArgumentException("Position must greater than 0");
+        }
         this.position = position;
     }
 }

@@ -129,12 +129,15 @@ public class CrossRoads implements Comparable<CrossRoads> {
         int s2;
 
         Lane lane;
-        for (int i = 0; i < toRoad.getNumOfLanes(); i++) {
+        for (int i = 1; i <= toRoad.getNumOfLanes(); i++) {
             // Get lane
             if (toRoad.isBidirectional()) {
-                lane = toRoad.getLaneListBy(toRoad.getEnd()).get(i);
+                if (getId() == toRoad.getStart())
+                    lane = toRoad.getLaneListBy(toRoad.getEnd()).get(i - 1);
+                else
+                    lane = toRoad.getLaneListBy(toRoad.getStart()).get(i - 1);
             } else
-                lane = toRoad.getLaneList().get(i);
+                lane = toRoad.getLaneList().get(i - 1);
             TreeMap<Integer, Car> carMap = lane.getCarMap();
             Integer higher = carMap.descendingKeySet().higher(0);
             if (higher != null) {
@@ -174,7 +177,7 @@ public class CrossRoads implements Comparable<CrossRoads> {
                     continue;
             } else {
                 // 车可以上路，设置状态
-                if (v2 <= toRoad.getLen()) {
+                if (s1 < v2) {
                     // 从队列删除该车
                     fromRoad.getWaitingQueue(getId()).remove(car);
                     fromRoad.removeCarFromRoad(car);
@@ -186,9 +189,6 @@ public class CrossRoads implements Comparable<CrossRoads> {
                     car.setLaneId(lane.getId());
                     car.setCurrentSpeed(v2);
                     return true;
-                } else {
-                    //官方论坛的人回答说不会出现这种情况
-                    System.err.println("Road#putCarOnRoad#error");
                 }
             }
         }
@@ -220,11 +220,24 @@ public class CrossRoads implements Comparable<CrossRoads> {
         for (int otherRoadId : roadTreeMap.keySet()) {
             if (findDirection(roadId, otherRoadId) == conflictRoadDirection) {
                 Road road = roadTreeMap.get(otherRoadId);
-                Car car = road.getWaitingQueue(getId()).peek();
+                Car car=null;
+                if(road.isBidirectional()) {
+                    if (getId() == road.getStart())
+                        car = road.getWaitingQueue(road.getEnd()).peek();
+                    else
+                        car = road.getWaitingQueue(road.getStart()).peek();
+                }else
+                    car = road.getWaitingQueue(road.getEnd()).peek();
                 if (car == null)
                     //那里没有车，可以走
                     return true;
                 int roadIdx = car.getPath().lastIndexOf(roadId);
+                if (roadIdx == -1 || roadIdx == car.getPath().size() - 1) {
+                    // 车不走那条路，没有冲突
+                    // 车到达目的地
+                    return true;
+
+                }
                 int from = car.getPath().get(roadIdx);
                 if (roadIdx != car.getPath().size() - 1) {
                     // 车还没到达终点

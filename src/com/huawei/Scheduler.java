@@ -85,6 +85,9 @@ public class Scheduler {
     }
 
     public void step() {
+
+        printCarsOnRoad();
+
         //系统调度时间加1
         systemScheduleTime += UNIT_TIME;
 //        while (!allCarInEndState()) {
@@ -126,10 +129,27 @@ public class Scheduler {
         Iterator<Car> iterator = garage.iterator();
         while (iterator.hasNext()) {
             Car car = iterator.next();
+
             if (car.getStartTime() <= systemScheduleTime) { // 车辆到达开始时间
+
                 // 车的第一条路
                 Road road = roadMap.get(car.getPath().get(0));
-                if (road.putCarOnRoad(car)) {
+                Road nextRoad = roadMap.get(car.getPath().get(1));
+
+                int nextCrossRoadId = 0;
+                // 计算下一路口的方向
+                if (crossMap.get(road.getStart()) == crossMap.get(nextRoad.getStart()))
+                    nextCrossRoadId = road.getStart();
+                else if (crossMap.get(road.getEnd()) == crossMap.get(nextRoad.getStart()))
+                    nextCrossRoadId = road.getEnd();
+                else if (crossMap.get(road.getEnd()) == crossMap.get(nextRoad.getEnd()))
+                    nextCrossRoadId = road.getEnd();
+                else if (crossMap.get(road.getStart()) == crossMap.get(nextRoad.getEnd()))
+                    nextCrossRoadId = road.getStart();
+                System.out.println("next " + nextCrossRoadId);
+
+
+                if (road.putCarOnRoad(car, nextCrossRoadId)) {
                     // 上路成功,从车库中删除车辆。否则车等待下一时刻才开。
                     car.setStartTime(systemScheduleTime);
                     // TODO: 上路的车处于等待状态还是终止状态呢？
@@ -220,5 +240,13 @@ public class Scheduler {
 
     public ArrayList<Car> getGarage() {
         return garage;
+    }
+
+    public void printCarsOnRoad() {
+        carMap.forEach((carId, car) -> {
+            if(car.getState()!=CarState.IN_GARAGE)
+                System.out.printf("Car %d state %-15s position %d lane \n", carId,car.getState(),car.getPosition(),car.getLaneId());
+        });
+        System.out.println();
     }
 }

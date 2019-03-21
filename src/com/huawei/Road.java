@@ -67,17 +67,17 @@ public class Road {
     }
 
     // 出发的车
-    public boolean putCarOnRoad(Car car) {
+    public boolean putCarOnRoad(Car car,int nextCrossRoadId) {
         int sv1 = Math.min(car.getTopSpeed(), this.getTopSpeed());
         for (int i = 1; i <= getNumOfLanes(); i++) {
-            Lane lane;
+            Lane lane=null;
             // Get lane
             if (isBidirectional()) {
                 //FIXME: Gocha!!!!
-                if (car.getFrom() == getEnd())
-                    lane = getLaneListBy(this.getStart()).get(i - 1);
-                else
+                if (car.getFrom()==this.getStart()&&this.getEnd()==nextCrossRoadId)
                     lane = getLaneListBy(this.getEnd()).get(i - 1);
+                else
+                    lane = getLaneListBy(this.getStart()).get(i - 1);
             } else
                 lane = laneList.get(i - 1);
             TreeMap<Integer, Car> carMap = lane.getCarMap();
@@ -106,7 +106,7 @@ public class Road {
                     continue;
             } else {
                 // 车可以上路，设置状态
-                if (sv1 <= this.getLen()) {
+                if (sv1 < this.getLen()) {
                     car.setPosition(sv1);
                     car.setState(CarState.END);
                     car.setLaneId(lane.getId());
@@ -124,7 +124,7 @@ public class Road {
 
     // 对单独车道处理
     public void moveCarsOnRoad(int laneId, int crossRoadId) {
-        Lane lane = getLaneListBy(crossRoadId).get(laneId - 1);
+        Lane lane = getLaneListBy(crossRoadId).get(laneId-1);
         TreeMap<Integer, Car> carMap = lane.getCarMap();
         if (carMap.size() == 0)
             //车道为空 没必要继续
@@ -146,6 +146,7 @@ public class Road {
                 } else {
                     // 会碰上车。
                     if (state == CarState.END) {
+                        // FIXME: position = 0
                         car.setPosition(frontCar.getPosition() - 1);
                         car.setState(CarState.END);
                     } else if (state == CarState.WAIT) {
@@ -154,8 +155,8 @@ public class Road {
                         System.err.println("Road#moveCarsOnRoad#error");
                     }
                 }
-            } else {
-                if (sv1 <= this.getLen() - position) {
+            } else {// 前方没有车
+                if (sv1 < this.getLen() - position) {
                     car.setPosition(sv1 + car.getPosition());
                     car.setState(CarState.END);
                 } else { // 可以出路口
@@ -224,7 +225,6 @@ public class Road {
         for (Lane lane : laneList) {
             if (car.getLaneId() == lane.getId()) {
                 lane.getCarMap().remove(car.getPosition());
-                break;
             }
         }
     }
