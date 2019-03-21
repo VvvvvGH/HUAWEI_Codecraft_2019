@@ -12,10 +12,10 @@ public class Main {
         ArrayList<String> file_content = new ArrayList<>();
         String line;
         try (BufferedReader br = new BufferedReader(new FileReader(path))) {
-            // Discard first line
-            br.readLine();
-            while ((line = br.readLine()) != null) {
-                file_content.add(line.replaceAll("[() ]", ""));
+            // Discard line start with #
+            while ((line = br.readLine()) != null && !line.equals("")) {
+                if (!line.startsWith("#"))
+                    file_content.add(line.replaceAll("[() ]", ""));
             }
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -79,9 +79,9 @@ public class Main {
         // TODO: calc
         trafficMap.initGraph();
         //运行规划并调整weight
-        trafficMap.preSchedule();
-        trafficMap.preSchedule();
-        trafficMap.preSchedule();
+//        trafficMap.preSchedule();
+//        trafficMap.preSchedule();
+//        trafficMap.preSchedule();
 //               trafficMap.preSchedule();
         trafficMap.schedule();
 

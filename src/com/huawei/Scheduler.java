@@ -51,61 +51,70 @@ public class Scheduler {
         );
 
         boolean allOut = false;
-        int carInGarage=0;
-        int carWait=0;
-        int carEnd=0;
-        int carOffRoad=0;
-        while (!allOut){
-            carInGarage=0;
-            carWait=0;
-            carEnd=0;
-            carOffRoad=0;
+        int carInGarage = 0;
+        int carWait = 0;
+        int carEnd = 0;
+        int carOffRoad = 0;
+        while (!allOut) {
+            carInGarage = 0;
+            carWait = 0;
+            carEnd = 0;
+            carOffRoad = 0;
             allOut = true;
-            for (int carId:scheduler.getCarMap().keySet()) {
+            for (int carId : scheduler.getCarMap().keySet()) {
                 CarState carState = scheduler.getCar(carId).getState();
-                if (carState!=CarState.OFF_ROAD)
-                    allOut=false;
-                if(carState==CarState.IN_GARAGE)
+                if (carState != CarState.OFF_ROAD)
+                    allOut = false;
+                if (carState == CarState.IN_GARAGE)
                     carInGarage++;
-                if(carState==CarState.OFF_ROAD)
+                if (carState == CarState.OFF_ROAD)
                     carOffRoad++;
-                if(carState==CarState.WAIT)
+                if (carState == CarState.WAIT)
                     carWait++;
-                if(carState==CarState.END)
+                if (carState == CarState.END)
                     carEnd++;
             }
-            System.out.printf("Car State at time %d : OFF_ROAD: %d IN_GARAGE: %d WAIT: %d END: %d\n",scheduler.systemScheduleTime,carOffRoad,carInGarage,carWait,carEnd);
+            if (allOut == true)
+                break;
+            System.out.printf("Car State at time %d : OFF_ROAD: %d IN_GARAGE: %d WAIT: %d END: %d\n", scheduler.systemScheduleTime, carOffRoad, carInGarage, carWait, carEnd);
+
             scheduler.step();
         }
-        System.out.println(scheduler.getSystemScheduleTime());
+        System.out.println("SystemScheduleTime: " + scheduler.getSystemScheduleTime());
 
     }
 
     public void step() {
         //系统调度时间加1
         systemScheduleTime += UNIT_TIME;
-        while (allCarInEndState()) {
+//        while (!allCarInEndState()) {
 
-            // TODO: １升序循环整个地图中所有的道路
-            //       ２让所有在道路上的车开始行驶到等待或终止状态
-            driveAllCarOnRoad();
+        // TODO: １升序循环整个地图中所有的道路
+        //       ２让所有在道路上的车开始行驶到等待或终止状态
+        driveAllCarOnRoad();
+        System.out.println("DEBUG: Step 1 DONE");
 
-        }
-
-        while (allCarInEndState()) {
-            // TODO: 1升序循环所有路口
-            //       2由路口来控制　升序遍历每个路口的所有道路直到所有车为终止状态　同时把过路口的车安排到新的道路
+//        }
+        do {
+            // 应该用do while
             for (CrossRoads cross : crossMap.values()) {
                 cross.schedule();
             }
-            driveAllCarOnRoad();
-        }
+//            driveAllCarOnRoad();
+        } while (!allCarInEndState());
+        System.out.println("DEBUG: Step 2 DONE");
         driveCarInGarage();
     }
 
     public void driveAllCarOnRoad() {
         for (Road road : roadMap.values()) {
             road.moveCarsOnRoad();
+            // FIXME: Waiting queue
+            if (road.isBidirectional()) {
+                road.offerWaitingQueue(road.getStart());
+                road.offerWaitingQueue(road.getEnd());
+            } else
+                road.offerWaitingQueue(road.getEnd());
         }
     }
 
@@ -123,20 +132,26 @@ public class Scheduler {
                 if (road.putCarOnRoad(car)) {
                     // 上路成功,从车库中删除车辆。否则车等待下一时刻才开。
                     car.setStartTime(systemScheduleTime);
-                    car.setState(CarState.WAIT);
+                    // TODO: 上路的车处于等待状态还是终止状态呢？
+//                    car.setState(CarState.WAIT);
                     iterator.remove();
                 }
-            }
+            } else if (car.getStartTime() < car.getPlanTime())
+                System.err.println("车不能早于计划时间出发!");
         }
     }
 
     private boolean allCarInEndState() {
         // 遍历所有路口
+
         for (CrossRoads cross : crossMap.values()) {
             if (cross.isStateChanged()) {
+                System.err.println("allCarInEndState false");
                 return false;
             }
         }
+
+        System.err.println("allCarInEndState ture");
         return true;
     }
 

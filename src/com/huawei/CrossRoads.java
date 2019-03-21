@@ -2,6 +2,7 @@ package com.huawei;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.PriorityQueue;
 import java.util.TreeMap;
 
 public class CrossRoads implements Comparable<CrossRoads> {
@@ -45,7 +46,25 @@ public class CrossRoads implements Comparable<CrossRoads> {
         stateChanged = false;
         for (int roadId : roadTreeMap.keySet()) {
             Road road = roadTreeMap.get(roadId);
-            Car car = road.getWaitingQueue(getId()).peek();
+            //空值异常
+            PriorityQueue<Car> queue = road.getWaitingQueue(getId());
+            // 当路为单向时，查找 start端的 queue为空
+            if (queue == null) {
+                continue;
+            }
+
+            Car car = null;
+            // 直到取到等待状态的车为止
+            while (!queue.isEmpty()) {
+                car = queue.peek();
+                if (car.getState() != CarState.WAIT) {
+                    queue.remove(car);
+                } else
+                    break;
+            }
+            if (car == null)
+                continue;
+
             // 车路径中该路的index
             int roadIdx = car.getPath().lastIndexOf(roadId);
             // 车来源路的ID
@@ -86,15 +105,10 @@ public class CrossRoads implements Comparable<CrossRoads> {
                 if (canMove) {
                     int previousLaneId = car.getLaneId();
                     if (moveCarBetweenRoad(roadTreeMap.get(from), roadTreeMap.get(to), car)) {
-                        // 从队列删除该车
-                        road.getWaitingQueue(getId()).remove(car);
-                        // 从路上删除该车
-                        road.removeCarFromRoad(car);
-                        
+                        // 调动路口更新其车道
+                        road.moveCarsOnRoad(previousLaneId, getId());
                         stateChanged = true;
                     }
-                    // 调动路口更新其车道
-                    road.moveCarsOnRoad(previousLaneId, getId());
                 }
             }
         }
@@ -118,7 +132,7 @@ public class CrossRoads implements Comparable<CrossRoads> {
         for (int i = 0; i < toRoad.getNumOfLanes(); i++) {
             // Get lane
             if (toRoad.isBidirectional()) {
-                lane = toRoad.getLaneListBy(car.getFrom()).get(i);
+                lane = toRoad.getLaneListBy(toRoad.getEnd()).get(i);
             } else
                 lane = toRoad.getLaneList().get(i);
             TreeMap<Integer, Car> carMap = lane.getCarMap();
@@ -136,11 +150,23 @@ public class CrossRoads implements Comparable<CrossRoads> {
                         如果在当前道路的行驶距离S1已经大于等于下一条道路的单位时间最大行驶距离SV2，则此车辆不能通过路口，
                         只能行进至当前道路的最前方位置，等待下一时刻通过路口。
                          */
+                        //移动车辆
                         car.setPosition(fromRoad.getLen());
+                        lane.getCarMap().put(car.getPosition(), car);
                         car.setState(CarState.END);
+                        return true;
                     }
+
+                    // 从队列删除该车
+                    fromRoad.getWaitingQueue(getId()).remove(car);
+                    fromRoad.removeCarFromRoad(car);
+                    // 移到下一条路
                     car.setPosition(s2);
+                    lane.getCarMap().put(car.getPosition(), car);
+                    //设置状态
                     car.setState(CarState.END);
+                    car.setLaneId(lane.getId());
+                    car.setCurrentSpeed(v2);
                     return true;
 
                 } else
@@ -149,7 +175,13 @@ public class CrossRoads implements Comparable<CrossRoads> {
             } else {
                 // 车可以上路，设置状态
                 if (v2 <= toRoad.getLen()) {
+                    // 从队列删除该车
+                    fromRoad.getWaitingQueue(getId()).remove(car);
+                    fromRoad.removeCarFromRoad(car);
+                    // 移到下一条路
                     car.setPosition(v2 - s1);
+                    lane.getCarMap().put(car.getPosition(), car);
+                    //设置状态
                     car.setState(CarState.END);
                     car.setLaneId(lane.getId());
                     car.setCurrentSpeed(v2);
@@ -189,6 +221,9 @@ public class CrossRoads implements Comparable<CrossRoads> {
             if (findDirection(roadId, otherRoadId) == conflictRoadDirection) {
                 Road road = roadTreeMap.get(otherRoadId);
                 Car car = road.getWaitingQueue(getId()).peek();
+                if (car == null)
+                    //那里没有车，可以走
+                    return true;
                 int roadIdx = car.getPath().lastIndexOf(roadId);
                 int from = car.getPath().get(roadIdx);
                 if (roadIdx != car.getPath().size() - 1) {

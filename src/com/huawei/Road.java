@@ -41,34 +41,45 @@ public class Road {
         this.bidirectional = vars[6].equals("1");
 
 
-        if (this.isBidirectional()) {
-            laneList = new ArrayList<>(this.getNumOfLanes() * 2);
-        } else
+        if (!this.isBidirectional())
             laneList = new ArrayList<>(this.getNumOfLanes());
+        else
+            laneList = new ArrayList<>(this.getNumOfLanes() * 2);
         // 从１开始
-        for (int i = 1; i <= this.getNumOfLanes() * 2; i++) {
+        for (int i = 1; i <= this.getNumOfLanes(); i++) {
             laneList.add(i - 1, new Lane());
             laneList.get(i - 1).setS1(this.getTopSpeed());
             laneList.get(i - 1).setId(i);
         }
+        if (this.isBidirectional()) {
+            for (int i = 1 + getNumOfLanes(); i <= this.getNumOfLanes() * 2; i++) {
+                laneList.add(i - 1, new Lane());
+                laneList.get(i - 1).setS1(this.getTopSpeed());
+                laneList.get(i - 1).setId(i-getNumOfLanes());
+            }
+        }
         // Priority queue
+        waitingQueueMap.put(getEnd(), new PriorityQueue<>(carComparator));
         if (isBidirectional()) {
             waitingQueueMap.put(getStart(), new PriorityQueue<>(carComparator));
-            waitingQueueMap.put(getEnd(), new PriorityQueue<>(carComparator));
         }
-        waitingQueueMap.put(getEnd(), new PriorityQueue<>());
+
     }
 
     // 出发的车
     public boolean putCarOnRoad(Car car) {
         int sv1 = Math.min(car.getTopSpeed(), this.getTopSpeed());
-        Lane lane;
-        for (int i = 0; i < getNumOfLanes(); i++) {
+        for (int i = 1; i <= getNumOfLanes(); i++) {
+            Lane lane;
             // Get lane
             if (isBidirectional()) {
-                lane = getLaneListBy(car.getFrom()).get(i);
+                //FIXME: Gocha!!!!
+                if (car.getFrom() == getEnd())
+                    lane = getLaneListBy(this.getStart()).get(i - 1);
+                else
+                    lane = getLaneListBy(this.getEnd()).get(i - 1);
             } else
-                lane = laneList.get(i);
+                lane = laneList.get(i - 1);
             TreeMap<Integer, Car> carMap = lane.getCarMap();
             Integer higher = carMap.descendingKeySet().higher(0);
             if (higher != null) {
@@ -81,14 +92,14 @@ public class Road {
                         car.setPosition(sv1);
                         car.setState(CarState.END);
                     } else {
-                        // 路上车全都是处于END State
-                        if (state == CarState.END) {
-                            car.setPosition(frontCar.getPosition() - 1);
-                            car.setState(CarState.END);
-                            car.setLaneId(lane.getId());
-                            car.setCurrentSpeed(sv1);
-                        }
+                        // 前面车是处于END State
+                        car.setPosition(frontCar.getPosition() - 1);
+                        car.setState(CarState.END);
                     }
+                    carMap.put(car.getPosition(), car);
+                    car.setLaneId(lane.getId());
+                    car.setCurrentSpeed(sv1);
+
                     return true;
                 } else
                     // 该车道已满
@@ -100,6 +111,7 @@ public class Road {
                     car.setState(CarState.END);
                     car.setLaneId(lane.getId());
                     car.setCurrentSpeed(sv1);
+                    carMap.put(car.getPosition(), car);
                     return true;
                 } else {
                     //官方论坛的人回答说不会出现这种情况
@@ -114,8 +126,13 @@ public class Road {
     public void moveCarsOnRoad(int laneId, int crossRoadId) {
         Lane lane = getLaneListBy(crossRoadId).get(laneId - 1);
         TreeMap<Integer, Car> carMap = lane.getCarMap();
+        if (carMap.size() == 0)
+            //车道为空 没必要继续
+            return;
         int s1 = lane.getS1();   // 当前路段的最大行驶距离或者车子与前车之间的最大可行驶距离
-        for (Integer position : carMap.descendingKeySet()) {
+        // 同步问题。TODO 思考下逻辑
+        List<Integer> positionList = new ArrayList(carMap.descendingKeySet());
+        for (Integer position : positionList) {
             Car car = carMap.get(position);
             int sv1 = car.getCurrentSpeed(); // 当前车速在当前道路的最大行驶距离
             Integer higher = carMap.descendingKeySet().higher(position);
@@ -158,6 +175,8 @@ public class Road {
                 moveCarsOnRoad(i, getStart());
             }
         }
+
+
     }
 
     public int compareTo(Road r) {
@@ -171,7 +190,10 @@ public class Road {
         lanes.forEach(
                 lane -> {
                     Map<Integer, Car> carMap = lane.getCarMap();
-                    waitingQueue.addAll(carMap.values());
+                    carMap.forEach((carId, car) -> {
+                        if (car.getState() == CarState.WAIT)
+                            waitingQueue.add(car);
+                    });
                 }
         );
     }
@@ -180,13 +202,14 @@ public class Road {
         if (crossRoadId == getEnd()) {
             return new ArrayList<Lane>(laneList.subList(0, getNumOfLanes()));
         } else if (crossRoadId == getStart()) {
-            return new ArrayList<Lane>(laneList.subList(getNumOfLanes(), getNumOfLanes() * 2 ));
+            return new ArrayList<Lane>(laneList.subList(getNumOfLanes(), getNumOfLanes() * 2));
         } else {
             System.err.println("Road#getLaneListBy#error");
             return null;
         }
     }
-    public ArrayList<Lane> getLaneList(){
+
+    public ArrayList<Lane> getLaneList() {
         // Single Road
         return laneList;
     }
@@ -198,17 +221,12 @@ public class Road {
     // 把车辆从路上移除
     //
     public void removeCarFromRoad(Car car) {
-        laneList.forEach(
-                lane -> {
-                    Map map = lane.getCarMap();
-                    if (map.containsValue(car)) {
-                        map.remove(car);
-                    } else {
-                        System.err.println("Road#removeCarFromRoad#error");
-                    }
-                }
-        );
-
+        for (Lane lane : laneList) {
+            if (car.getLaneId() == lane.getId()) {
+                lane.getCarMap().remove(car.getPosition());
+                break;
+            }
+        }
     }
 
     public int getId() {
