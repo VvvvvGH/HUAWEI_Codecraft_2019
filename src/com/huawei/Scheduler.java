@@ -85,28 +85,24 @@ public class Scheduler {
     }
 
     public void step() {
-
-        printCarsOnRoad();
-
         //系统调度时间加1
         systemScheduleTime += UNIT_TIME;
-//        while (!allCarInEndState()) {
 
         // TODO: １升序循环整个地图中所有的道路
         //       ２让所有在道路上的车开始行驶到等待或终止状态
         driveAllCarOnRoad();
-        System.out.println("DEBUG: Step 1 DONE");
 
-//        }
+        System.out.println("DEBUG: Step 1 DONE");
         do {
             // 应该用do while
             for (CrossRoads cross : crossMap.values()) {
                 cross.schedule();
             }
-//            driveAllCarOnRoad();
         } while (!allCarInEndState());
         System.out.println("DEBUG: Step 2 DONE");
+
         driveCarInGarage();
+        printCarsOnRoad();
     }
 
     public void driveAllCarOnRoad() {
@@ -245,7 +241,7 @@ public class Scheduler {
     public void printCarsOnRoad() {
         carMap.forEach((carId, car) -> {
             if(car.getState()!=CarState.IN_GARAGE)
-                System.out.printf("Car %d state %-15s position %d lane \n", carId,car.getState(),car.getPosition(),car.getLaneId());
+                System.out.printf("Car %d state %-15s position %-3d lane %d\n", carId,car.getState(),car.getPosition(),car.getLaneId());
         });
         System.out.println();
     }

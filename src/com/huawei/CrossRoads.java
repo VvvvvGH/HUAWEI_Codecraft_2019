@@ -21,8 +21,13 @@ public class CrossRoads implements Comparable<CrossRoads> {
         NORTH, WEST, SOUTH, EAST,
     }
 
-    public CrossRoads(int id) {
+    public CrossRoads(int id,int road1,int road2,int road3,int road4) {
         this.id = id;
+        //路口顺序为 顺时针方向，第一个是北方。
+        roadDirection.put(road1, RoadPosition.NORTH);
+        roadDirection.put(road2, RoadPosition.WEST);
+        roadDirection.put(road3, RoadPosition.SOUTH);
+        roadDirection.put(road4, RoadPosition.EAST);
     }
 
     public CrossRoads(String line) {
@@ -34,6 +39,8 @@ public class CrossRoads implements Comparable<CrossRoads> {
         roadDirection.put(Integer.parseInt(vars[3]), RoadPosition.SOUTH);
         roadDirection.put(Integer.parseInt(vars[4]), RoadPosition.EAST);
     }
+
+
 
     @Override
     public int compareTo(CrossRoads c) {
@@ -139,11 +146,11 @@ public class CrossRoads implements Comparable<CrossRoads> {
             } else
                 lane = toRoad.getLaneList().get(i - 1);
             TreeMap<Integer, Car> carMap = lane.getCarMap();
-            Integer higher = carMap.descendingKeySet().higher(0);
-            if (higher != null) {
-                if (higher > 1) {
+            Integer front = carMap.descendingKeySet().lower(0);
+            if (front != null) {
+                if (front > 1) {
                     // 前方有车 而且车道有位置
-                    s2 = higher - 1;
+                    s2 = front - 1;
                     int diff = v2 - s1;
                     if (diff < 0) diff = 0;
                     if (s2 > diff)

@@ -44,8 +44,9 @@ public class Car implements Comparable<Car> {
         this.state = CarState.IN_GARAGE;
     }
 
-    public void addPath(int roadId) {
+    public Car addPath(int roadId) {
         path.add(roadId);
+        return this;
     }
 
     public ArrayList<Integer> getPath() {
@@ -85,77 +86,46 @@ public class Car implements Comparable<Car> {
         return id;
     }
 
-    public void setId(int id) {
-        this.id = id;
-    }
 
     public int getFrom() {
         return from;
     }
 
-    public void setFrom(int from) {
-        this.from = from;
-    }
 
     public int getTo() {
         return to;
     }
 
-    public void setTo(int to) {
-        this.to = to;
-    }
 
     public int getTopSpeed() {
         return topSpeed;
     }
 
-    public void setTopSpeed(int topSpeed) {
-        this.topSpeed = topSpeed;
-    }
 
     public int getPlanTime() {
         return planTime;
     }
 
-    public void setPlanTime(int planTime) {
-        this.planTime = planTime;
-    }
-
-    public void setPath(ArrayList<Integer> path) {
-        this.path = path;
-    }
 
     public int getCurrentSpeed() {
         return currentSpeed;
     }
 
-    public void setCurrentSpeed(int currentSpeed) {
-        this.currentSpeed = currentSpeed;
-    }
 
     public long getStartTime() {
         return startTime;
     }
 
-    public void setStartTime(long startTime) {
-        this.startTime = startTime;
-    }
 
     public long getEndTime() {
         return endTime;
     }
 
-    public void setEndTime(int endTime) {
-        this.endTime = endTime;
-    }
 
     public int getLaneId() {
         return laneId;
     }
 
-    public void setLaneId(int laneId) {
-        this.laneId = laneId;
-    }
 
     public static Comparator<Car> getIdComparator() {
         return idComparator;
@@ -169,20 +139,73 @@ public class Car implements Comparable<Car> {
         return state;
     }
 
-    public void setState(CarState state) {
-        this.state = state;
-    }
 
     public int getPosition() {
         return position;
     }
 
-    public void setPosition(int position) {
-        if(position<=0) {
-            System.out.println("Current position: "+getPosition());
-            System.out.println("Illegal position: "+position);
+    public Car setPosition(int position) {
+        if (position <= 0) {
+            System.out.println("Current position: " + getPosition());
+            System.out.println("Illegal position: " + position);
             throw new IllegalArgumentException("Position must greater than 0");
         }
         this.position = position;
+        return this;
+    }
+
+    public Car setId(int id) {
+        this.id = id;
+        return this;
+    }
+
+    public Car setFrom(int from) {
+        this.from = from;
+        return this;
+    }
+
+    public Car setTo(int to) {
+        this.to = to;
+        return this;
+    }
+
+    public Car setTopSpeed(int topSpeed) {
+        this.topSpeed = topSpeed;
+        return this;
+    }
+
+    public Car setPlanTime(int planTime) {
+        this.planTime = planTime;
+        return this;
+    }
+
+    public Car setPath(ArrayList<Integer> path) {
+        this.path = path;
+        return this;
+    }
+
+    public Car setCurrentSpeed(int currentSpeed) {
+        this.currentSpeed = currentSpeed;
+        return this;
+    }
+
+    public Car setStartTime(long startTime) {
+        this.startTime = startTime;
+        return this;
+    }
+
+    public Car setEndTime(long endTime) {
+        this.endTime = endTime;
+        return this;
+    }
+
+    public Car setLaneId(int laneId) {
+        this.laneId = laneId;
+        return this;
+    }
+
+    public Car setState(CarState state) {
+        this.state = state;
+        return this;
     }
 }
