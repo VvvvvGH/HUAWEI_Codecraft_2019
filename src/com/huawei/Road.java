@@ -181,11 +181,13 @@ public class Road {
                 }
             } else {// 前方没有车
                 // 需要等于
+                // FIXME:这里有个情况：被路口调用时一辆车本是end状态， 但是在这里变成了wait状态，导致下一次调用路口时该车移动。
                 if (sv1 <= this.getLen() - position) {
                     car.setPosition(sv1 + car.getPosition());
                     car.setState(CarState.END);
                 } else { // 可以出路口
                     car.setState(CarState.WAIT);
+
                 }
             }
             carMap.remove(position);

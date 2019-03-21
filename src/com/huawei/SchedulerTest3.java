@@ -65,10 +65,10 @@ class SchedulerTest3 {
     }
 
     @org.junit.jupiter.api.Test
-    void step() {
+    void step1() {
         scheduler.step();
 
-        assertAll("Car position",
+        assertAll("Car position 1",
                 () -> assertEquals(1, scheduler.getCar(100).getLaneId()),
                 () -> assertEquals(5, scheduler.getCar(100).getPosition()),
                 () -> assertEquals( 1,scheduler.getCar(200).getLaneId()),
@@ -84,7 +84,7 @@ class SchedulerTest3 {
                 );
 
         scheduler.step();
-        assertAll("Car position",
+        assertAll("Car position 2",
                 () -> assertEquals(1, scheduler.getCar(100).getLaneId()),
                 () -> assertEquals(10, scheduler.getCar(100).getPosition()),
                 () -> assertEquals( 1,scheduler.getCar(200).getLaneId()),
@@ -99,5 +99,6 @@ class SchedulerTest3 {
                 () -> assertEquals(8,scheduler.getCar(301).getPosition())
         );
     }
+
 
 }

@@ -161,10 +161,21 @@ public class CrossRoads implements Comparable<CrossRoads> {
                         只能行进至当前道路的最前方位置，等待下一时刻通过路口。
                          */
                         //移动车辆
+                        TreeMap<Integer,Car> carTreeMap;
+
+                        if (toRoad.isBidirectional()) {
+                            if (getId() == fromRoad.getEnd())
+                                carTreeMap = fromRoad.getLaneListBy(fromRoad.getEnd()).get(car.getLaneId()-1).getCarMap();
+                            else
+                                carTreeMap = fromRoad.getLaneListBy(fromRoad.getStart()).get(car.getLaneId()-1).getCarMap();
+                        } else
+                            carTreeMap = fromRoad.getLaneListBy(fromRoad.getEnd()).get(car.getLaneId()-1).getCarMap();
+
+                        carTreeMap.remove(car.getPosition());
                         car.setPosition(fromRoad.getLen());
-                        lane.getCarMap().put(car.getPosition(), car);
+                        carTreeMap.put(car.getPosition(), car);
                         car.setState(CarState.END);
-                        return true;
+                        return false;
                     }
 
                     // 从队列删除该车
@@ -196,10 +207,34 @@ public class CrossRoads implements Comparable<CrossRoads> {
                     car.setLaneId(lane.getId());
                     car.setCurrentSpeed(v2);
                     return true;
+                }else {
+                     /*
+                        如果在当前道路的行驶距离S1已经大于等于下一条道路的单位时间最大行驶距离SV2，则此车辆不能通过路口，
+                        只能行进至当前道路的最前方位置，等待下一时刻通过路口。
+                         */
+                    //移动车辆
+                    TreeMap<Integer,Car> carTreeMap;
+                    if (toRoad.isBidirectional()) {
+                        if (getId() == fromRoad.getEnd())
+                            carTreeMap = fromRoad.getLaneListBy(fromRoad.getEnd()).get(car.getLaneId()-1).getCarMap();
+                        else
+                            carTreeMap = fromRoad.getLaneListBy(fromRoad.getStart()).get(car.getLaneId()-1).getCarMap();
+                    } else
+                        carTreeMap = fromRoad.getLaneListBy(fromRoad.getEnd()).get(car.getLaneId()-1).getCarMap();
+
+                    carTreeMap.remove(car.getPosition());
+                    car.setPosition(fromRoad.getLen());
+                    carTreeMap.put(car.getPosition(), car);
+                    car.setState(CarState.END);
+                    return false;
                 }
             }
         }
         return false;
+
+    }
+
+    private void moveCarToFront(){
 
     }
 
