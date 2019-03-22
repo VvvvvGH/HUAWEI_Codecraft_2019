@@ -66,6 +66,7 @@ class SchedulerTest3 {
 
     @org.junit.jupiter.api.Test
     void step1() {
+        System.out.println("T+1 时间");
         scheduler.step();
 
         assertAll("Car position 1",
@@ -82,7 +83,7 @@ class SchedulerTest3 {
                 () -> assertEquals(3,scheduler.getCar(301).getLaneId()),
                 () -> assertEquals(3,scheduler.getCar(301).getPosition())
                 );
-
+        System.out.println("T+2 时间");
         scheduler.step();
         assertAll("Car position 2",
                 () -> assertEquals(1, scheduler.getCar(100).getLaneId()),

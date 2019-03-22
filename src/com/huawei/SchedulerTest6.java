@@ -20,7 +20,7 @@ class SchedulerTest6 {
 
         scheduler.addRoad(new Road(1, 10, 5, 3, 11, 15, false));
         scheduler.addRoad(new Road(2, 10, 5, 3, 15, 12, false));
-        scheduler.addRoad(new Road(3, 10, 5, 3, 15, 13, false));
+        scheduler.addRoad(new Road(3, 10, 5, 3, 13, 15, false));
         scheduler.addRoad(new Road(4, 10, 5, 3, 14, 15, false));
 
         scheduler.getCrossMap().get(11).addRoads(scheduler.getRoadMap());
@@ -52,34 +52,51 @@ class SchedulerTest6 {
         scheduler.addCar(new Car(801, 11, 12, 5, 1));
         scheduler.addCar(new Car(901, 11, 12, 5, 1));
 
-        scheduler.getCarMap().get(100).setState(CarState.WAIT).setCurrentSpeed(5).setLaneId(1).setStartTime(1).setPosition(10).addPath(4).addPath(2);
-        scheduler.getCarMap().get(200).setState(CarState.WAIT).setCurrentSpeed(5).setLaneId(2).setStartTime(1).setPosition(10).addPath(4).addPath(2);
-        scheduler.getCarMap().get(300).setState(CarState.WAIT).setCurrentSpeed(5).setLaneId(3).setStartTime(1).setPosition(10).addPath(4).addPath(2);
-        scheduler.getCarMap().get(101).setState(CarState.WAIT).setCurrentSpeed(5).setLaneId(1).setStartTime(1).setPosition(9).addPath(4).addPath(2);
-        scheduler.getCarMap().get(201).setState(CarState.WAIT).setCurrentSpeed(5).setLaneId(2).setStartTime(1).setPosition(9).addPath(4).addPath(2);
-        scheduler.getCarMap().get(301).setState(CarState.WAIT).setCurrentSpeed(5).setLaneId(3).setStartTime(1).setPosition(9).addPath(4).addPath(2);
+        scheduler.getCarMap().get(100).setState(CarState.END).setCurrentSpeed(5).setLaneId(1).setStartTime(1).setPosition(10).addPath(4).addPath(2);
+        scheduler.getCarMap().get(200).setState(CarState.END).setCurrentSpeed(5).setLaneId(2).setStartTime(1).setPosition(10).addPath(4).addPath(2);
+        scheduler.getCarMap().get(300).setState(CarState.END).setCurrentSpeed(5).setLaneId(3).setStartTime(1).setPosition(10).addPath(4).addPath(2);
+        scheduler.getCarMap().get(101).setState(CarState.END).setCurrentSpeed(5).setLaneId(1).setStartTime(1).setPosition(9).addPath(4).addPath(2);
+        scheduler.getCarMap().get(201).setState(CarState.END).setCurrentSpeed(5).setLaneId(2).setStartTime(1).setPosition(9).addPath(4).addPath(2);
+        scheduler.getCarMap().get(301).setState(CarState.END).setCurrentSpeed(5).setLaneId(3).setStartTime(1).setPosition(9).addPath(4).addPath(2);
 
-        scheduler.getCarMap().get(400).setState(CarState.WAIT).setCurrentSpeed(5).setLaneId(1).setStartTime(1).setPosition(10).addPath(3).addPath(2);
-        scheduler.getCarMap().get(500).setState(CarState.WAIT).setCurrentSpeed(5).setLaneId(2).setStartTime(1).setPosition(10).addPath(3).addPath(2);
-        scheduler.getCarMap().get(600).setState(CarState.WAIT).setCurrentSpeed(5).setLaneId(3).setStartTime(1).setPosition(10).addPath(3).addPath(2);
-        scheduler.getCarMap().get(401).setState(CarState.WAIT).setCurrentSpeed(5).setLaneId(1).setStartTime(1).setPosition(9).addPath(3).addPath(2);
-        scheduler.getCarMap().get(501).setState(CarState.WAIT).setCurrentSpeed(5).setLaneId(2).setStartTime(1).setPosition(9).addPath(3).addPath(2);
-        scheduler.getCarMap().get(601).setState(CarState.WAIT).setCurrentSpeed(5).setLaneId(3).setStartTime(1).setPosition(9).addPath(3).addPath(2);
+        scheduler.getCarMap().get(400).setState(CarState.END).setCurrentSpeed(5).setLaneId(1).setStartTime(1).setPosition(10).addPath(3).addPath(2);
+        scheduler.getCarMap().get(500).setState(CarState.END).setCurrentSpeed(5).setLaneId(2).setStartTime(1).setPosition(10).addPath(3).addPath(2);
+        scheduler.getCarMap().get(600).setState(CarState.END).setCurrentSpeed(5).setLaneId(3).setStartTime(1).setPosition(10).addPath(3).addPath(2);
+        scheduler.getCarMap().get(401).setState(CarState.END).setCurrentSpeed(5).setLaneId(1).setStartTime(1).setPosition(9).addPath(3).addPath(2);
+        scheduler.getCarMap().get(501).setState(CarState.END).setCurrentSpeed(5).setLaneId(2).setStartTime(1).setPosition(9).addPath(3).addPath(2);
+        scheduler.getCarMap().get(601).setState(CarState.END).setCurrentSpeed(5).setLaneId(3).setStartTime(1).setPosition(9).addPath(3).addPath(2);
 
-        scheduler.getCarMap().get(700).setState(CarState.WAIT).setCurrentSpeed(5).setLaneId(1).setStartTime(1).setPosition(10).addPath(1).addPath(2);
-        scheduler.getCarMap().get(800).setState(CarState.WAIT).setCurrentSpeed(5).setLaneId(2).setStartTime(1).setPosition(10).addPath(1).addPath(2);
-        scheduler.getCarMap().get(900).setState(CarState.WAIT).setCurrentSpeed(5).setLaneId(3).setStartTime(1).setPosition(10).addPath(1).addPath(2);
-        scheduler.getCarMap().get(701).setState(CarState.WAIT).setCurrentSpeed(5).setLaneId(1).setStartTime(1).setPosition(9).addPath(1).addPath(2);
-        scheduler.getCarMap().get(801).setState(CarState.WAIT).setCurrentSpeed(5).setLaneId(2).setStartTime(1).setPosition(9).addPath(1).addPath(2);
-        scheduler.getCarMap().get(901).setState(CarState.WAIT).setCurrentSpeed(5).setLaneId(3).setStartTime(1).setPosition(9).addPath(1).addPath(2);
+        scheduler.getCarMap().get(700).setState(CarState.END).setCurrentSpeed(5).setLaneId(3).setStartTime(1).setPosition(10).addPath(1).addPath(2);
+        scheduler.getCarMap().get(800).setState(CarState.END).setCurrentSpeed(5).setLaneId(2).setStartTime(1).setPosition(10).addPath(1).addPath(2);
+        scheduler.getCarMap().get(900).setState(CarState.END).setCurrentSpeed(5).setLaneId(1).setStartTime(1).setPosition(10).addPath(1).addPath(2);
+        scheduler.getCarMap().get(701).setState(CarState.END).setCurrentSpeed(5).setLaneId(3).setStartTime(1).setPosition(9).addPath(1).addPath(2);
+        scheduler.getCarMap().get(801).setState(CarState.END).setCurrentSpeed(5).setLaneId(2).setStartTime(1).setPosition(9).addPath(1).addPath(2);
+        scheduler.getCarMap().get(901).setState(CarState.END).setCurrentSpeed(5).setLaneId(1).setStartTime(1).setPosition(9).addPath(1).addPath(2);
 
         for (int i = 1; i < 5; i++) {
             for (Lane lane : scheduler.getRoad(i).getLaneList()) {
-                scheduler.getCarMap().forEach((carId, car) -> {
-                    if (car.getLaneId() == lane.getId()) {
-                        lane.getCarMap().put(car.getPosition(), car);
+                if (i==1){
+                 scheduler.getCarMap().forEach((carId, car) -> {
+                    if (car.getLaneId() == lane.getId()&&car.getId()>=700) {
+                        lane.putCar(car,car.getPosition());
                     }
                 });
+                }
+                if (i==3){
+                    scheduler.getCarMap().forEach((carId, car) -> {
+                        if (car.getLaneId() == lane.getId()&&(carId>=400&&carId<700)) {
+                            lane.putCar(car,car.getPosition());
+                        }
+                    });
+                }
+                if (i==4){
+                    scheduler.getCarMap().forEach((carId, car) -> {
+                        if (car.getLaneId() == lane.getId()&&car.getId()<400) {
+                            lane.putCar(car,car.getPosition());
+                        }
+                    });
+                }
+
             }
         }
         scheduler.getRoad(1).offerWaitingQueue(15);

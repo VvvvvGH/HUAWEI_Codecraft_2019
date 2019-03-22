@@ -145,13 +145,10 @@ public class Car implements Comparable<Car> {
     }
 
     public Car setPosition(int position) {
-        if(getId()==100&&position==5)
-            System.out.println();
         if (position <= 0) {
             System.out.println("Current position: " + getPosition());
             System.out.println("Illegal position: " + position);
             System.err.println("Position must greater than 0");
-
         }
         this.position = position;
         return this;
@@ -208,8 +205,6 @@ public class Car implements Comparable<Car> {
     }
 
     public Car setState(CarState state) {
-        if(getId()==100)
-            System.out.println("State changed "+getState()+" -> "+state);
         this.state = state;
         return this;
     }

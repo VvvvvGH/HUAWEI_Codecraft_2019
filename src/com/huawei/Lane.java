@@ -65,8 +65,8 @@ public class Lane {
         return new ArrayList<Integer>(carMap.descendingKeySet());
     }
 
-    public boolean isFull() {
-        return carMap.size() == length;
+    public boolean hasPosition() {
+        return carMap.get(1)==null;
     }
 
     public boolean isEmpty() {

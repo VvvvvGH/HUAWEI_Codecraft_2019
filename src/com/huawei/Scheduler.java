@@ -98,8 +98,7 @@ public class Scheduler {
             for (CrossRoads cross : crossMap.values()) {
 
                 cross.schedule();
-                System.out.println(cross.getId());
-                printCarsOnRoad();
+//                printCarsOnRoad();
             }
         } while (!allCarInEndState());
         System.out.println("DEBUG: Step 2 DONE");
@@ -146,7 +145,7 @@ public class Scheduler {
                     nextCrossRoadId = road.getEnd();
                 else if (crossMap.get(road.getStart()) == crossMap.get(nextRoad.getEnd()))
                     nextCrossRoadId = road.getStart();
-                System.out.println("next " + nextCrossRoadId);
+
 
 
                 if (road.putCarOnRoad(car, nextCrossRoadId)) {

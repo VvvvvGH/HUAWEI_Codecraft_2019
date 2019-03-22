@@ -145,13 +145,8 @@ public class Road {
 //        int s1 = lane.getS1();   // 当前路段的最大行驶距离或者车子与前车之间的最大可行驶距离
         // 同步问题。TODO 思考下逻辑
         List<Integer> positionList = lane.getDescendingPositionList();
-        System.out.println();
-        positionList.forEach(p -> System.out.print(" "+ p));
-        System.out.println();
         for (Integer position : positionList) {
             Car car = lane.getCar(position);
-            if(car.getId()==100)
-                System.out.println();
             int sv1 = car.getCurrentSpeed(); // 当前车速在当前道路的最大行驶距离
             int front = lane.getFrontCarPosition(position);
             if (front != -1) { // 前方有车

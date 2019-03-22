@@ -31,12 +31,12 @@ class SchedulerTest5 {
         scheduler.addCar(new Car(201, 11, 13, 5, 1));
         scheduler.addCar(new Car(301, 11, 13, 5, 1));
 
-        scheduler.getCarMap().get(100).setState(CarState.WAIT).setCurrentSpeed(4).setLaneId(1).setStartTime(1).setPosition(8).addPath(1).addPath(2);
-        scheduler.getCarMap().get(200).setState(CarState.WAIT).setCurrentSpeed(4).setLaneId(2).setStartTime(1).setPosition(8).addPath(1).addPath(2);
-        scheduler.getCarMap().get(300).setState(CarState.WAIT).setCurrentSpeed(4).setLaneId(3).setStartTime(1).setPosition(8).addPath(1).addPath(2);
-        scheduler.getCarMap().get(101).setState(CarState.WAIT).setCurrentSpeed(4).setLaneId(1).setStartTime(1).setPosition(7).addPath(1).addPath(2);
-        scheduler.getCarMap().get(201).setState(CarState.WAIT).setCurrentSpeed(4).setLaneId(2).setStartTime(1).setPosition(7).addPath(1).addPath(2);
-        scheduler.getCarMap().get(301).setState(CarState.WAIT).setCurrentSpeed(4).setLaneId(3).setStartTime(1).setPosition(7).addPath(1).addPath(2);
+        scheduler.getCarMap().get(100).setState(CarState.END).setCurrentSpeed(4).setLaneId(1).setStartTime(1).setPosition(8).addPath(1).addPath(2);
+        scheduler.getCarMap().get(200).setState(CarState.END).setCurrentSpeed(4).setLaneId(2).setStartTime(1).setPosition(8).addPath(1).addPath(2);
+        scheduler.getCarMap().get(300).setState(CarState.END).setCurrentSpeed(4).setLaneId(3).setStartTime(1).setPosition(8).addPath(1).addPath(2);
+        scheduler.getCarMap().get(101).setState(CarState.END).setCurrentSpeed(4).setLaneId(1).setStartTime(1).setPosition(7).addPath(1).addPath(2);
+        scheduler.getCarMap().get(201).setState(CarState.END).setCurrentSpeed(4).setLaneId(2).setStartTime(1).setPosition(7).addPath(1).addPath(2);
+        scheduler.getCarMap().get(301).setState(CarState.END).setCurrentSpeed(4).setLaneId(3).setStartTime(1).setPosition(7).addPath(1).addPath(2);
 
         for (Lane lane : scheduler.getRoad(1).getLaneList()) {
             scheduler.getCarMap().forEach((carId, car) -> {
@@ -62,23 +62,8 @@ class SchedulerTest5 {
 
     @org.junit.jupiter.api.Test
     void step() {
-        scheduler.step();
 
-        assertAll("Car position",
-                () -> assertEquals(1, scheduler.getCar(100).getLaneId()),
-                () -> assertEquals(5, scheduler.getCar(100).getPosition()),
-                () -> assertEquals( 2,scheduler.getCar(200).getLaneId()),
-                () -> assertEquals( 5,scheduler.getCar(200).getPosition()),
-                () -> assertEquals(3,scheduler.getCar(300).getLaneId()),
-                () -> assertEquals(5,scheduler.getCar(300).getPosition()),
-                () -> assertEquals(1,scheduler.getCar(101).getLaneId()),
-                () -> assertEquals(7,scheduler.getCar(101).getPosition()),
-                () -> assertEquals(2,scheduler.getCar(201).getLaneId()),
-                () -> assertEquals(7,scheduler.getCar(201).getPosition()),
-                () -> assertEquals(3,scheduler.getCar(301).getLaneId()),
-                () -> assertEquals(7,scheduler.getCar(301).getPosition())
-                );
-
+        System.out.println("T+1 时间");
         scheduler.step();
         assertAll("Car position",
                 () -> assertEquals(1, scheduler.getCar(100).getLaneId()),
@@ -94,7 +79,7 @@ class SchedulerTest5 {
                 () -> assertEquals(3,scheduler.getCar(301).getLaneId()),
                 () -> assertEquals(2,scheduler.getCar(301).getPosition())
         );
-
+        System.out.println("T+2 时间");
         scheduler.step();
         assertAll("Car position",
                 () -> assertEquals(1, scheduler.getCar(100).getLaneId()),
