@@ -1,5 +1,6 @@
 package com.huawei;
 
+import java.util.ArrayList;
 import java.util.TreeMap;
 
 public class Lane {
@@ -27,7 +28,29 @@ public class Lane {
             return false;
         }
         carMap.put(position, car);
+
+        //将车放入车道时设置lane id
+        car.setLaneId(getId());
+        car.setPosition(position);
         return true;
+    }
+
+    public boolean removeCar(int position) {
+        if (carMap.get(position) == null)
+            return false;
+        carMap.remove(position);
+        return true;
+    }
+
+    public boolean updateCar(Car car, int oldPosition, int newPosition) {
+        if (carMap.get(newPosition) != null && oldPosition != newPosition) {
+            System.err.println("Lane#updateCar#error: Override another car");
+            return false;
+        }
+        if (removeCar(oldPosition)) {
+            return putCar(car, newPosition);
+        }
+        return false;
     }
 
     public int getFrontCarPosition(int position) {
@@ -36,6 +59,10 @@ public class Lane {
         if (front != null)
             return front;
         return -1;
+    }
+
+    public ArrayList<Integer> getDescendingPositionList() {
+        return new ArrayList<Integer>(carMap.descendingKeySet());
     }
 
     public boolean isFull() {
@@ -55,4 +82,12 @@ public class Lane {
         this.id = id;
     }
 
+    public int getLength() {
+        return length;
+    }
+
+    public Lane setLength(int length) {
+        this.length = length;
+        return this;
+    }
 }

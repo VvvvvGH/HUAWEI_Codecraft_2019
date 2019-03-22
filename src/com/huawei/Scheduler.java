@@ -96,17 +96,21 @@ public class Scheduler {
         do {
             // 应该用do while
             for (CrossRoads cross : crossMap.values()) {
+
                 cross.schedule();
+                System.out.println(cross.getId());
+                printCarsOnRoad();
             }
         } while (!allCarInEndState());
         System.out.println("DEBUG: Step 2 DONE");
 
         driveCarInGarage();
-        printCarsOnRoad();
+//        printCarsOnRoad();
     }
 
     public void driveAllCarOnRoad() {
         for (Road road : roadMap.values()) {
+
             road.moveCarsOnRoad();
             // FIXME: Waiting queue
             if (road.isBidirectional()) {
