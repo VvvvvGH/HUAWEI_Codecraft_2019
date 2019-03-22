@@ -68,15 +68,11 @@ public class Road {
             laneList = new ArrayList<>(this.getNumOfLanes() * 2);
         // 从１开始
         for (int i = 1; i <= this.getNumOfLanes(); i++) {
-            laneList.add(i - 1, new Lane());
-            laneList.get(i - 1).setS1(this.getTopSpeed());
-            laneList.get(i - 1).setId(i);
+            laneList.add(i - 1, new Lane(i,getLen()));
         }
         if (this.isBidirectional()) {
             for (int i = 1 + getNumOfLanes(); i <= this.getNumOfLanes() * 2; i++) {
-                laneList.add(i - 1, new Lane());
-                laneList.get(i - 1).setS1(this.getTopSpeed());
-                laneList.get(i - 1).setId(i - getNumOfLanes());
+                laneList.add(i - 1, new Lane(i - getNumOfLanes(),getLen()));
             }
         }
     }
@@ -122,7 +118,6 @@ public class Road {
                     carMap.put(car.getPosition(), car);
                     car.setLaneId(lane.getId());
                     car.setCurrentSpeed(sv1);
-
                     return true;
                 } else
                     // 该车道已满
@@ -148,11 +143,10 @@ public class Road {
     // 对单独车道处理
     public void moveCarsOnRoad(int laneId, int crossRoadId) {
         Lane lane = getLaneListBy(crossRoadId).get(laneId - 1);
-        TreeMap<Integer, Car> carMap = lane.getCarMap();
-        if (carMap.size() == 0)
+        if (lane.isEmpty())
             //车道为空 没必要继续
             return;
-        int s1 = lane.getS1();   // 当前路段的最大行驶距离或者车子与前车之间的最大可行驶距离
+//        int s1 = lane.getS1();   // 当前路段的最大行驶距离或者车子与前车之间的最大可行驶距离
         // 同步问题。TODO 思考下逻辑
         List<Integer> positionList = new ArrayList(carMap.descendingKeySet());
         for (Integer position : positionList) {
@@ -203,8 +197,6 @@ public class Road {
                 moveCarsOnRoad(i, getStart());
             }
         }
-
-
     }
 
     public int compareTo(Road r) {
