@@ -137,13 +137,11 @@ public class Road {
     // 对单独车道处理
     public void moveCarsOnRoad(int laneId, int crossRoadId) {
 
-
         Lane lane = getLaneListBy(crossRoadId).get(laneId - 1);
         if (lane.isEmpty())
             //车道为空 没必要继续
             return;
-//        int s1 = lane.getS1();   // 当前路段的最大行驶距离或者车子与前车之间的最大可行驶距离
-        // 同步问题。TODO 思考下逻辑
+
         List<Integer> positionList = lane.getDescendingPositionList();
         for (Integer position : positionList) {
             Car car = lane.getCar(position);

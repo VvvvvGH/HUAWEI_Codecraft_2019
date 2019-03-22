@@ -18,7 +18,7 @@ public class TrafficMap {
     private HashMap<Integer, Road> roads = new HashMap<>();
     private HashMap<Integer, Car> cars = new HashMap<>();
 
-    private final int MAX_CAR_LIMIT = 1;
+    private final int MAX_CAR_LIMIT = 25;
 
 
     public void initGraph() {
@@ -126,7 +126,7 @@ public class TrafficMap {
         });
 
         //调整1/2的路的长度为原来1/3
-        int numOfRoadsToAdjust = roads.size() / 2;
+        int numOfRoadsToAdjust = roads.size() / 3;
         for (int i = 0; i < numOfRoadsToAdjust; i++) {
             Road road = roads.get(list.get(i).getKey());
             CrossRoads from = crossMap.get(road.getStart());

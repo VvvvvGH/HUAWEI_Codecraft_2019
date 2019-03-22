@@ -236,8 +236,18 @@ public class CrossRoads implements Comparable<CrossRoads> {
 
         //车不过马路
         if (!carWillCrossTheRoad && fromRoad.getLen() != car.getPosition()) {
-            Lane lane = fromRoad.getLaneListBy(fromRoad.getEnd()).get(car.getLaneId() - 1);
-            frontCarPosition = lane.getFrontCarPosition(car.getPosition());
+//            Lane lane = fromRoad.getLaneListBy(fromRoad.getEnd()).get(car.getLaneId() - 1);
+            Lane laneContainsThisCar = null;
+            for(Lane lane:fromRoad.getLaneList()){
+                if(lane.getCar(car.getPosition())!=null&&lane.getCar(car.getPosition()).equals(car))
+                    laneContainsThisCar = lane;
+            }
+
+            if(laneContainsThisCar==null)
+                System.err.println("CrossRoad Error: lane is null");
+
+
+            frontCarPosition = laneContainsThisCar.getFrontCarPosition(car.getPosition());
             if(frontCarPosition!=-1){
                 if( (frontCarPosition-car.getPosition() )<= car.getCurrentSpeed())
                     positionOnNextRoad=frontCarPosition-1;
@@ -247,8 +257,7 @@ public class CrossRoads implements Comparable<CrossRoads> {
             else {
                 positionOnNextRoad = fromRoad.getLen();
             }
-
-            lane.updateCar(car, car.getPosition(),positionOnNextRoad);
+            laneContainsThisCar.updateCar(car, car.getPosition(),positionOnNextRoad);
             car.setState(CarState.END);
             internalStateChanged = true;
         } else

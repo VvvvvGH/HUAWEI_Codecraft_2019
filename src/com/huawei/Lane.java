@@ -36,8 +36,10 @@ public class Lane {
     }
 
     public boolean removeCar(int position) {
-        if (carMap.get(position) == null)
+        if (carMap.get(position) == null) {
+            System.err.println("Lane#removeCar#error: delete failed");
             return false;
+        }
         carMap.remove(position);
         return true;
     }
