@@ -174,7 +174,9 @@ public class Road {
                     car.setState(CarState.WAIT);
                 }
             }
-            lane.updateCar(car, position, car.getPosition());
+            if (car.getPosition() != position) {
+                lane.updateCar(car, position, car.getPosition());
+            }
         }
     }
 
@@ -213,18 +215,19 @@ public class Road {
         //更新等待队列
         PriorityQueue<Car> waitingQueue = waitingQueueMap.get(crossRoadId);
 
-        if(waitingQueue==null)
+        if (waitingQueue == null)
             return;
 
         Iterator<Car> it = waitingQueue.iterator();
-        while (it.hasNext()){
+        while (it.hasNext()) {
             Car car = it.next();
-            if(car.getState()==CarState.END)
+            if (car.getState() == CarState.END)
                 it.remove();
         }
     }
-    public void clearWaitingQueue(){
-        waitingQueueMap.forEach((cross,queue)->queue.clear());
+
+    public void clearWaitingQueue() {
+        waitingQueueMap.forEach((cross, queue) -> queue.clear());
     }
 
     public ArrayList<Lane> getLaneListBy(int crossRoadId) {
@@ -251,9 +254,9 @@ public class Road {
     public void removeCarFromRoad(Car car) {
         for (Lane lane : laneList) {
             Iterator<Car> it = lane.getCarMap().values().iterator();
-            while (it.hasNext()){
-                Car carOnLane =it.next();
-                if(carOnLane.getId()==car.getId())
+            while (it.hasNext()) {
+                Car carOnLane = it.next();
+                if (carOnLane.getId() == car.getId())
                     it.remove();
             }
         }
