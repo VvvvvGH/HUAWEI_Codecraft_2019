@@ -255,8 +255,11 @@ public class Road {
     // 把车辆从路上移除
     public void removeCarFromRoad(Car car) {
         for (Lane lane : laneList) {
-            if (car.getLaneId() == lane.getId()) {
-                lane.getCarMap().remove(car.getPosition());
+            Iterator<Car> it = lane.getCarMap().values().iterator();
+            while (it.hasNext()){
+                Car carOnLane =it.next();
+                if(carOnLane.getId()==car.getId())
+                    it.remove();
             }
         }
     }
