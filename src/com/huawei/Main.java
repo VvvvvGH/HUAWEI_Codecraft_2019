@@ -59,7 +59,7 @@ public class Main {
         String answerPath = args[3];
         logger.info("carPath = " + carPath + " roadPath = " + roadPath + " crossPath = " + crossPath + " and answerPath = " + answerPath);
 
-        // TODO:read input files
+        // Read input files
         logger.info("start read input files");
         ArrayList<String> cars = readFile(carPath);
         ArrayList<String> roads = readFile(roadPath);
@@ -92,16 +92,21 @@ public class Main {
         );
 
 
-
         //运行规划
-        trafficMap.schedule();
-//
-//        scheduler.runAndPrintResult();
+        trafficMap.initGraphByDistance();
+        trafficMap.preSchedule();
+        trafficMap.preSchedule();
+        trafficMap.preSchedule();
+        trafficMap.scheduleTest(26);
+
 
         //打印结果
         trafficMap.getCars().forEach(
-                (carId, car) -> answer.add(car.outputResult())
+                (carId, car) -> {
+                    answer.add(car.outputResult());
+                }
         );
+
         //  write answer.txt
         logger.info("Start write output file");
         writeFile(answer, answerPath);

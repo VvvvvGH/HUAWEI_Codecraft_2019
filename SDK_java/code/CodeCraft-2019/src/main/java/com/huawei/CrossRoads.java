@@ -233,7 +233,6 @@ public class CrossRoads implements Comparable<CrossRoads> {
 
         //车不过马路
         if (!carWillCrossTheRoad && fromRoad.getLen() != car.getPosition()) {
-//            Lane lane = fromRoad.getLaneListBy(fromRoad.getEnd()).get(car.getLaneId() - 1);
             Lane laneContainsThisCar = null;
             for(Lane lane:fromRoad.getLaneList()){
                 if(lane.getCar(car.getPosition())!=null&&lane.getCar(car.getPosition()).equals(car))
@@ -344,4 +343,6 @@ public class CrossRoads implements Comparable<CrossRoads> {
     public void setStateChanged(boolean stateChanged) {
         this.stateChanged = stateChanged;
     }
+
+
 }

@@ -78,6 +78,7 @@ public class Road {
     }
 
     private void initWaitingQueue() {
+        waitingQueueMap.clear();
         // Priority queue
         waitingQueueMap.put(getEnd(), new PriorityQueue<>(carComparator));
         if (isBidirectional()) {
@@ -314,6 +315,20 @@ public class Road {
 
     public void setBidirectional(boolean bidirectional) {
         this.bidirectional = bidirectional;
+    }
+
+    public double calculateLoad() {
+        int totalCapacity = getNumOfLanes() * getLen() * (isBidirectional() ? 2 : 1);
+        int numberOfCar = 0;
+        for (Lane lane : laneList) {
+            numberOfCar += lane.getCarMap().size();
+        }
+        return numberOfCar/(totalCapacity*1.0);
+    }
+
+    public void resetRoadState(){
+        initLaneList();
+        initWaitingQueue();
     }
 
 }

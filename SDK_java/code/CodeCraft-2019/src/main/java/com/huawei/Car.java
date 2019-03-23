@@ -209,15 +209,29 @@ public class Car implements Comparable<Car> {
         if (getState() != state)
             Scheduler.carStateChanged = true;
 
-        updateStateCounter(getState(),state);
+        updateStateCounter(getState(), state);
 
         this.state = state;
         return this;
     }
 
     public void updateStateCounter(CarState original, CarState now) {
+        if (original == now)
+            return;
         HashMap<CarState, Integer> carStateCounter = Scheduler.carStateCounter;
+
         carStateCounter.put(now, carStateCounter.get(now) == null ? 1 : (carStateCounter.get(now) + 1));
         carStateCounter.put(original, carStateCounter.get(original) == null ? 0 : (carStateCounter.get(original) - 1));
+
+    }
+
+    public void resetCarState() {
+        this.currentSpeed = 0;
+        this.startTime = -1;
+        this.endTime = -1;
+        this.laneId = -1;
+
+        this.state = CarState.IN_GARAGE;
+        this.position = -1;
     }
 }

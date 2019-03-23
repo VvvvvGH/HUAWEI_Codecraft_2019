@@ -11,8 +11,12 @@ public class Scheduler {
 
     // 基于统计的死锁检测，　若系统一段时间内状态没有发生变化，则认为是死锁
     public static boolean carStateChanged = false;
-    public static final int DEADLOCK_DETECT_THRESHOLD = 100;
-    public static int deadLockCounter = 0;
+    public  final int DEADLOCK_DETECT_THRESHOLD = 100;
+    public  int deadLockCounter = 0;
+
+    public static Long totalScheduleTime;
+    public static Long systemScheduleTime = 0L;
+    public static final int UNIT_TIME = 1;
 
     //全局车辆状态统计
     public static HashMap<CarState, Integer> carStateCounter = new HashMap<CarState, Integer>() {{
@@ -21,10 +25,6 @@ public class Scheduler {
         put(CarState.END, 0);
         put(CarState.IN_GARAGE, 0);
     }};
-
-    private Long totalScheduleTime;
-    private Long systemScheduleTime = 0L;
-    private final int UNIT_TIME = 1;
 
     public void runAndPrintResult() {
         // Add car to garage
@@ -50,15 +50,18 @@ public class Scheduler {
 
     }
 
-    public void stepUntilFinish() {
-        while (carStateCounter.get(CarState.OFF_ROAD) != carMap.size()) {
-            step();
+    public boolean stepUntilFinish(int numberOfCars) {
+        while (carStateCounter.get(CarState.OFF_ROAD) != numberOfCars) {
+            if (!step())
+                return false;
         }
+        return true;
     }
 
     public void stepUntilFinishDebug() {
         while (carStateCounter.get(CarState.OFF_ROAD) != carMap.size()) {
-            step();
+            if (!step())
+                return;
             printCarStates();
         }
     }
@@ -82,8 +85,7 @@ public class Scheduler {
         } while (!allCarInEndState());
 
         driveCarInGarage();
-//        if (!carStateChanged)
-//            System.err.println("Possible Deadlock");
+
         if (detectDeadLock())
             return false;
 
@@ -194,6 +196,35 @@ public class Scheduler {
         garage.add(car);
         // 对车库内的车按ID进行排序
         Collections.sort(garage, Car.idComparator);
+    }
+
+    public void clearGarage() {
+        garage.clear();
+    }
+
+    public void resetCarStatusCounter() {
+        carStateCounter.clear();
+        carStateCounter.put(CarState.WAIT, 0);
+        carStateCounter.put(CarState.IN_GARAGE, carMap.size());
+        carStateCounter.put(CarState.OFF_ROAD, 0);
+        carStateCounter.put(CarState.END, 0);
+    }
+
+    public void resetDeadlockCounter() {
+        deadLockCounter = 0;
+        carStateChanged = false;
+    }
+
+    public void reset() {
+        // 重置调度器所有参数的状态
+        resetCarStatusCounter();
+        resetDeadlockCounter();
+        clearGarage();
+
+        systemScheduleTime = 0L;
+
+        carMap.forEach((carId, car) -> car.resetCarState());
+        roadMap.forEach((roadId, road) -> road.resetRoadState());
     }
 
     public Long getScheduleTime() {
