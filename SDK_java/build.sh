@@ -38,11 +38,11 @@ if [ -f CodeCraft-2019-1.0.tar.gz ]
 then
     rm -f CodeCraft-2019-1.0.tar.gz
 fi
-
+rm -r $APP_HOME/code/CodeCraft-2019/bin/
 mkdir -p $APP_HOME/bin/lib/
 cp $APP_HOME/code/CodeCraft-2019/lib/*.jar $APP_HOME/bin/lib/
 mkdir -p $APP_HOME/bin/resources/
-cp $APP_HOME/code/CodeCraft-2019/src/com/resources/* $APP_HOME/bin/resources/
+cp $APP_HOME/code/CodeCraft-2019/src/main/resources/* $APP_HOME/bin/resources/
 
 tar -zcPf CodeCraft-2019-1.0.tar.gz *
 
