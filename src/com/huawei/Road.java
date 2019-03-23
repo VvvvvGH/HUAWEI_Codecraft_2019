@@ -316,4 +316,15 @@ public class Road {
         this.bidirectional = bidirectional;
     }
 
+    public double calculateLoad() {
+        int totalCapacity = getNumOfLanes() * getLen() * (isBidirectional() ? 2 : 1);
+        int numberOfCar = 0;
+        for (Lane lane : laneList) {
+            numberOfCar += lane.getCarMap().size();
+        }
+        return numberOfCar/(totalCapacity*1.0);
+
+
+    }
+
 }

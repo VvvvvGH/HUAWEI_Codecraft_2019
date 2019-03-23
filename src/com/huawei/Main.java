@@ -92,8 +92,7 @@ public class Main {
         );
 
 
-        // 计算
-        trafficMap.initGraph();
+
         //运行规划
         trafficMap.schedule();
 //
