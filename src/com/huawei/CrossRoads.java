@@ -60,9 +60,6 @@ public class CrossRoads implements Comparable<CrossRoads> {
             for (int roadId : roadTreeMap.keySet()) {
                 Road road = roadTreeMap.get(roadId);
 
-                //更新等待队列
-                road.updateWaitingQueue(getId());
-
                 Car car;
 
                 while (true) {
