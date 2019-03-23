@@ -3,6 +3,7 @@ package com.huawei;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 
 public class Car implements Comparable<Car> {
     private int id;
@@ -31,7 +32,7 @@ public class Car implements Comparable<Car> {
         this.to = to;
         this.topSpeed = topSpeed;
         this.planTime = planTime;
-        this.state = CarState.IN_GARAGE;
+        setState(CarState.IN_GARAGE);
     }
 
     public Car(String line) {
@@ -41,7 +42,7 @@ public class Car implements Comparable<Car> {
         this.to = Integer.parseInt(vars[2]);
         this.topSpeed = Integer.parseInt(vars[3]);
         this.planTime = Integer.parseInt(vars[4]);
-        this.state = CarState.IN_GARAGE;
+        setState(CarState.IN_GARAGE);
     }
 
     public Car addPath(int roadId) {
@@ -205,7 +206,18 @@ public class Car implements Comparable<Car> {
     }
 
     public Car setState(CarState state) {
+        if (getState() != state)
+            Scheduler.carStateChanged = true;
+
+        updateStateCounter(getState(),state);
+
         this.state = state;
         return this;
+    }
+
+    public void updateStateCounter(CarState original, CarState now) {
+        HashMap<CarState, Integer> carStateCounter = Scheduler.carStateCounter;
+        carStateCounter.put(now, carStateCounter.get(now) == null ? 1 : (carStateCounter.get(now) + 1));
+        carStateCounter.put(original, carStateCounter.get(original) == null ? 0 : (carStateCounter.get(original) - 1));
     }
 }

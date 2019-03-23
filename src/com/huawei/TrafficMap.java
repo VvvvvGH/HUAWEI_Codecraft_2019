@@ -18,9 +18,6 @@ public class TrafficMap {
     private HashMap<Integer, Road> roads = new HashMap<>();
     private HashMap<Integer, Car> cars = new HashMap<>();
 
-    private final int MAX_CAR_LIMIT = 25;
-
-
     public void initGraph() {
         crossMap.forEach((cross, crossObj) -> graph.addVertex(crossObj));
         roads.forEach((roadId, road) -> {
@@ -60,84 +57,28 @@ public class TrafficMap {
         );
         int time = 0;
         int count = 0;
+        int carFlowLimit = 20;
         while (!priorityQueue.isEmpty()) {
             time++;
             count = 0;
             while (true) {
                 Car car = priorityQueue.peek();
-                if (car == null || car.getPlanTime() > time || count >= MAX_CAR_LIMIT)
+                if (car == null || car.getPlanTime() > time || count >= carFlowLimit)
                     break;
 
                 car.setStartTime(time);
 
                 GraphPath path = shortestDistancePath(car.getFrom(), car.getTo());
                 setCarPath(car, path);
-
+                Main.scheduler.addToGarage(car);
                 priorityQueue.remove(car);
                 count++;
             }
+            Main.scheduler.step();
+//            Main.scheduler.printCarStates();
         }
-    }
-
-    public void preSchedule() {
-        this.getCars().forEach(
-                (carId, car) -> priorityQueue.offer(car)
-        );
-
-        //Busy path counter
-        TreeMap<Integer, Integer> roadCounter = new TreeMap<>();
-
-        int time = 0;
-        int count = 0;
-        while (!priorityQueue.isEmpty()) {
-            time++;
-            count = 0;
-            while (true) {
-                Car car = priorityQueue.peek();
-                if (car == null || car.getPlanTime() > time || count >= MAX_CAR_LIMIT)
-                    break;
-
-                car.setStartTime(time);
-
-                GraphPath path = shortestDistancePath(car.getFrom(), car.getTo());
-                setCarPath(car, path);
-
-                // 计算每一时间单位最忙的路
-                car.getPath().forEach(road -> {
-                    if (roadCounter.containsKey(road))
-                        roadCounter.put(road, roadCounter.get(road) + 1);
-                    else
-                        roadCounter.put(road, 1);
-                });
-
-
-                priorityQueue.remove(car);
-                count++;
-            }
-        }
-
-        List<Map.Entry<Integer, Integer>> list = new ArrayList<>(roadCounter.entrySet());
-
-        Collections.sort(list, new Comparator<Map.Entry<Integer, Integer>>() {
-            //升序排序
-            public int compare(Map.Entry<Integer, Integer> o1, Map.Entry<Integer, Integer> o2) {
-                return o1.getValue().compareTo(o2.getValue());
-            }
-        });
-
-        //调整1/2的路的长度为原来1/3
-        int numOfRoadsToAdjust = roads.size() / 3;
-        for (int i = 0; i < numOfRoadsToAdjust; i++) {
-            Road road = roads.get(list.get(i).getKey());
-            CrossRoads from = crossMap.get(road.getStart());
-            CrossRoads to = crossMap.get(road.getEnd());
-            DefaultWeightedEdge edge = graph.getEdge(from, to);
-            graph.setEdgeWeight(edge, road.getLen() / 1.5);
-            if (road.isBidirectional()) {
-                DefaultWeightedEdge opposeEdge = graph.getEdge(to, from);
-                graph.setEdgeWeight(opposeEdge, road.getLen() / 1.5);
-            }
-        }
+        Main.scheduler.stepUntilFinishDebug();
+        Main.scheduler.printCarStates();
     }
 
     public void addCross(CrossRoads cross) {

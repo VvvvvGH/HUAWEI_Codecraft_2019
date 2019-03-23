@@ -1,9 +1,6 @@
 package com.huawei;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.TreeMap;
+import java.util.*;
 
 public class Scheduler {
 
@@ -12,99 +9,99 @@ public class Scheduler {
     private TreeMap<Integer, Car> carMap = new TreeMap<>();
     private ArrayList<Car> garage = new ArrayList<>();
 
+    // 基于统计的死锁检测，　若系统一段时间内状态没有发生变化，则认为是死锁
+    public static boolean carStateChanged = false;
+    public static final int DEADLOCK_DETECT_THRESHOLD = 100;
+    public static int deadLockCounter = 0;
 
-    private Long scheduleTime;
+    //全局车辆状态统计
+    public static HashMap<CarState, Integer> carStateCounter = new HashMap<CarState, Integer>() {{
+        put(CarState.OFF_ROAD, 0);
+        put(CarState.WAIT, 0);
+        put(CarState.END, 0);
+        put(CarState.IN_GARAGE, 0);
+    }};
+
+    private Long totalScheduleTime;
     private Long systemScheduleTime = 0L;
     private final int UNIT_TIME = 1;
 
-    public static void main(String[] args) {
-        if (args.length != 4) {
-            return;
+    public void runAndPrintResult() {
+        // Add car to garage
+        garage.addAll(carMap.values());
+        // 对车库内的车按ID进行排序
+        Collections.sort(garage, Car.idComparator);
+
+
+        while (carStateCounter.get(CarState.OFF_ROAD) != carMap.size()) {
+
+            System.out.printf("Car State at time %d : OFF_ROAD: %d IN_GARAGE: %d WAIT: %d END: %d  \n", systemScheduleTime, carStateCounter.get(CarState.OFF_ROAD), carStateCounter.get(CarState.IN_GARAGE), carStateCounter.get(CarState.WAIT), carStateCounter.get(CarState.END));
+
+            step();
         }
+        System.out.println("SystemScheduleTime: " + getSystemScheduleTime());
+    }
 
+    public void printCarStates() {
 
-        String carPath = args[0];
-        String roadPath = args[1];
-        String crossPath = args[2];
-        String answerPath = args[3];
-
-        ArrayList<String> cars = Main.readFile(carPath);
-        ArrayList<String> roads = Main.readFile(roadPath);
-        ArrayList<String> crossRoads = Main.readFile(crossPath);
-        ArrayList<String> answer = Main.readFile(answerPath);
-
-        Scheduler scheduler = new Scheduler();
-
-        roads.forEach(
-                road -> scheduler.addRoad(new Road(road))
-        );
-
-        crossRoads.forEach(
-                cross -> scheduler.addCross(new CrossRoads(cross))
-        );
-
-        cars.forEach(
-                car -> scheduler.addCar(new Car(car))
-        );
-        answer.forEach(
-                ans -> scheduler.updateCarFromAnswer(ans)
-        );
-
-        boolean allOut = false;
-        int carInGarage = 0;
-        int carWait = 0;
-        int carEnd = 0;
-        int carOffRoad = 0;
-        while (!allOut) {
-            carInGarage = 0;
-            carWait = 0;
-            carEnd = 0;
-            carOffRoad = 0;
-            allOut = true;
-            for (int carId : scheduler.getCarMap().keySet()) {
-                CarState carState = scheduler.getCar(carId).getState();
-                if (carState != CarState.OFF_ROAD)
-                    allOut = false;
-                if (carState == CarState.IN_GARAGE)
-                    carInGarage++;
-                if (carState == CarState.OFF_ROAD)
-                    carOffRoad++;
-                if (carState == CarState.WAIT)
-                    carWait++;
-                if (carState == CarState.END)
-                    carEnd++;
-            }
-            if (allOut == true)
-                break;
-            System.out.printf("Car State at time %d : OFF_ROAD: %d IN_GARAGE: %d WAIT: %d END: %d\n", scheduler.systemScheduleTime, carOffRoad, carInGarage, carWait, carEnd);
-
-            scheduler.step();
-        }
-        System.out.println("SystemScheduleTime: " + scheduler.getSystemScheduleTime());
+        System.out.printf("Car State at time %d : OFF_ROAD: %d IN_GARAGE: %d WAIT: %d END: %d  \n", systemScheduleTime, carStateCounter.get(CarState.OFF_ROAD), carStateCounter.get(CarState.IN_GARAGE), carStateCounter.get(CarState.WAIT), carStateCounter.get(CarState.END));
+        if (carStateCounter.get(CarState.OFF_ROAD) == carMap.size())
+            System.out.println("系统调度时间: " + getSystemScheduleTime());
 
     }
 
-    public void step() {
-        //系统调度时间加1
+    public void stepUntilFinish() {
+        while (carStateCounter.get(CarState.OFF_ROAD) != carMap.size()) {
+            step();
+        }
+    }
+
+    public void stepUntilFinishDebug() {
+        while (carStateCounter.get(CarState.OFF_ROAD) != carMap.size()) {
+            step();
+            printCarStates();
+        }
+    }
+
+
+    public boolean step() {
+        //全局车辆状态标识
+        carStateChanged = false;
+        //系统调度时间
         systemScheduleTime += UNIT_TIME;
 
-        // TODO: １升序循环整个地图中所有的道路
+        //       １升序循环整个地图中所有的道路
         //       ２让所有在道路上的车开始行驶到等待或终止状态
         driveAllCarOnRoad();
 
-        System.out.println("DEBUG: Step 1 DONE");
         do {
             // 应该用do while
             for (CrossRoads cross : crossMap.values()) {
-
                 cross.schedule();
-//                printCarsOnRoad();
             }
         } while (!allCarInEndState());
-        System.out.println("DEBUG: Step 2 DONE");
 
         driveCarInGarage();
-//        printCarsOnRoad();
+//        if (!carStateChanged)
+//            System.err.println("Possible Deadlock");
+        if (detectDeadLock())
+            return false;
+
+        return true;
+    }
+
+
+    public boolean detectDeadLock() {
+        if (!carStateChanged)
+            deadLockCounter++;
+        if (deadLockCounter == DEADLOCK_DETECT_THRESHOLD) {
+            System.err.println("Dead lock detected!");
+            return true;
+        }
+        if (systemScheduleTime % DEADLOCK_DETECT_THRESHOLD == 0)
+            deadLockCounter = 0;
+
+        return false;
     }
 
     public void driveAllCarOnRoad() {
@@ -128,6 +125,11 @@ public class Scheduler {
         Iterator<Car> iterator = garage.iterator();
         while (iterator.hasNext()) {
             Car car = iterator.next();
+            if (car.getState() != CarState.IN_GARAGE) {
+                System.err.println("ERROR: 车库里出现错误状态的车。");
+                iterator.remove();
+                continue;
+            }
 
             if (car.getStartTime() <= systemScheduleTime) { // 车辆到达开始时间
 
@@ -147,12 +149,9 @@ public class Scheduler {
                     nextCrossRoadId = road.getStart();
 
 
-
                 if (road.putCarOnRoad(car, nextCrossRoadId)) {
                     // 上路成功,从车库中删除车辆。否则车等待下一时刻才开。
                     car.setStartTime(systemScheduleTime);
-                    // TODO: 上路的车处于等待状态还是终止状态呢？
-//                    car.setState(CarState.WAIT);
                     iterator.remove();
                 }
             } else if (car.getStartTime() < car.getPlanTime())
@@ -162,35 +161,13 @@ public class Scheduler {
 
     private boolean allCarInEndState() {
         // 遍历所有路口
-
         for (CrossRoads cross : crossMap.values()) {
             if (cross.isStateChanged()) {
-                System.err.println("allCarInEndState false");
                 return false;
             }
         }
-
-        System.err.println("allCarInEndState ture");
         return true;
     }
-
-    public void updateCarFromAnswer(String answer) {
-        String[] vars = answer.split(",");
-        int carId = Integer.parseInt(vars[0]);
-        // 更新车辆行驶信息
-        Car car = carMap.get(carId);
-        car.setStartTime(Integer.parseInt(vars[1]));
-        for (int i = 2; i < vars.length; i++) {
-            if (Integer.parseInt(vars[i]) > 0) {
-                car.addPath((Integer.parseInt(vars[i])));
-            }
-        }
-        // 把车加入车库
-        garage.add(car);
-        // 对车库内的车按ID进行排序
-        Collections.sort(garage, Car.idComparator);
-    }
-
 
     public void addRoad(Road road) {
         roadMap.put(road.getId(), road);
@@ -213,8 +190,14 @@ public class Scheduler {
         crossMap.put(cross.getId(), cross);
     }
 
+    public void addToGarage(Car car) {
+        garage.add(car);
+        // 对车库内的车按ID进行排序
+        Collections.sort(garage, Car.idComparator);
+    }
+
     public Long getScheduleTime() {
-        return scheduleTime;
+        return totalScheduleTime;
     }
 
     public Long getSystemScheduleTime() {
@@ -243,8 +226,8 @@ public class Scheduler {
 
     public void printCarsOnRoad() {
         carMap.forEach((carId, car) -> {
-            if(car.getState()!=CarState.IN_GARAGE)
-                System.out.printf("Car %d state %-15s position %-3d lane %d\n", carId,car.getState(),car.getPosition(),car.getLaneId());
+            if (car.getState() != CarState.IN_GARAGE)
+                System.out.printf("Car %d state %-15s position %-3d lane %d\n", carId, car.getState(), car.getPosition(), car.getLaneId());
         });
         System.out.println();
     }

@@ -8,6 +8,9 @@ import java.util.ArrayList;
 public class Main {
     private static final Logger logger = Logger.getLogger(Main.class);
 
+    public static TrafficMap trafficMap = new TrafficMap();
+    public static Scheduler scheduler = new Scheduler();
+
     public static ArrayList<String> readFile(String path) {
         ArrayList<String> file_content = new ArrayList<>();
         String line;
@@ -46,7 +49,9 @@ public class Main {
             return;
         }
 
+
         logger.info("Start...");
+        long startTime = System.currentTimeMillis();
 
         String carPath = args[0];
         String roadPath = args[1];
@@ -62,37 +67,48 @@ public class Main {
         ArrayList<String> answer = new ArrayList<>();
 
         // Add road first. Then add cross
-        TrafficMap trafficMap = new TrafficMap();
         roads.forEach(
-                road -> trafficMap.addRoad(new Road(road))
+                roadLine -> {
+                    Road road = new Road(roadLine);
+                    trafficMap.addRoad(road);
+                    scheduler.addRoad(road);
+                }
         );
 
         crossRoads.forEach(
-                cross -> trafficMap.addCross(new CrossRoads(cross))
+                crossLine -> {
+                    CrossRoads cross = new CrossRoads(crossLine);
+                    trafficMap.addCross(cross);
+                    scheduler.addCross(cross);
+                }
         );
 
         cars.forEach(
-                car -> trafficMap.addCar(new Car(car))
+                carLine -> {
+                    Car car = new Car(carLine);
+                    trafficMap.addCar(car);
+                    scheduler.addCar(car);
+                }
         );
 
 
-        // TODO: calc
+        // 计算
         trafficMap.initGraph();
-        //运行规划并调整weight
-//        trafficMap.preSchedule();
-//        trafficMap.preSchedule();
-//        trafficMap.preSchedule();
-//               trafficMap.preSchedule();
+        //运行规划
         trafficMap.schedule();
+//
+//        scheduler.runAndPrintResult();
 
+        //打印结果
         trafficMap.getCars().forEach(
                 (carId, car) -> answer.add(car.outputResult())
         );
-        // TODO: write answer.txt
+        //  write answer.txt
         logger.info("Start write output file");
-//        answer.add("#(carId,StartTime,RoadId...)");
         writeFile(answer, answerPath);
 
         logger.info("End...");
+        long endTime = System.currentTimeMillis();
+        System.out.println("Main程序运行时间：" + (endTime - startTime) + "ms");
     }
 }
