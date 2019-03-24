@@ -11,8 +11,8 @@ public class Scheduler {
 
     // 基于统计的死锁检测，　若系统一段时间内状态没有发生变化，则认为是死锁
     public static boolean carStateChanged = false;
-    public  final int DEADLOCK_DETECT_THRESHOLD = 100;
-    public  int deadLockCounter = 0;
+    public final int DEADLOCK_DETECT_THRESHOLD = 100;
+    public int deadLockCounter = 0;
 
     public static Long totalScheduleTime;
     public static Long systemScheduleTime = 0L;
@@ -162,6 +162,8 @@ public class Scheduler {
     }
 
     private boolean allCarInEndState() {
+        if (Scheduler.carStateCounter.get(CarState.WAIT) != 0)
+            return false;
         // 遍历所有路口
         for (CrossRoads cross : crossMap.values()) {
             if (cross.isStateChanged()) {

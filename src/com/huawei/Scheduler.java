@@ -1,5 +1,9 @@
 package com.huawei;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.*;
 
 public class Scheduler {
@@ -11,8 +15,8 @@ public class Scheduler {
 
     // 基于统计的死锁检测，　若系统一段时间内状态没有发生变化，则认为是死锁
     public static boolean carStateChanged = false;
-    public  final int DEADLOCK_DETECT_THRESHOLD = 100;
-    public  int deadLockCounter = 0;
+    public final int DEADLOCK_DETECT_THRESHOLD = 100;
+    public int deadLockCounter = 0;
 
     public static Long totalScheduleTime;
     public static Long systemScheduleTime = 0L;
@@ -66,6 +70,31 @@ public class Scheduler {
         }
     }
 
+    public boolean stepWithPlot() {
+        plotScheduleState();
+        //全局车辆状态标识
+        carStateChanged = false;
+        //系统调度时间
+        systemScheduleTime += UNIT_TIME;
+
+        //       １升序循环整个地图中所有的道路
+        //       ２让所有在道路上的车开始行驶到等待或终止状态
+        driveAllCarOnRoad();
+
+        do {
+            // 应该用do while
+            for (CrossRoads cross : crossMap.values()) {
+                cross.schedule();
+            }
+        } while (!allCarInEndState());
+
+        driveCarInGarage();
+
+        if (detectDeadLock())
+            return false;
+
+        return true;
+    }
 
     public boolean step() {
         //全局车辆状态标识
@@ -162,6 +191,8 @@ public class Scheduler {
     }
 
     private boolean allCarInEndState() {
+        if (Scheduler.carStateCounter.get(CarState.WAIT) != 0)
+            return false;
         // 遍历所有路口
         for (CrossRoads cross : crossMap.values()) {
             if (cross.isStateChanged()) {
@@ -261,5 +292,68 @@ public class Scheduler {
                 System.out.printf("Car %d state %-15s position %-3d lane %d\n", carId, car.getState(), car.getPosition(), car.getLaneId());
         });
         System.out.println();
+    }
+
+    public void plotScheduleState(){
+        String dataFilePath = "SDK_java/bin/config/data.txt";
+        exportScheduleState(dataFilePath);
+        String cmd = "python3 plotMap/visualization.py\n";
+        try
+        {
+            Process exeEcho = Runtime.getRuntime().exec("bash");
+            exeEcho.getOutputStream().write(cmd.getBytes());
+            exeEcho.getOutputStream().flush();
+
+            //等待200毫秒,让Python画图
+            Thread.currentThread().sleep(200);
+        } catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+    }
+
+    public void exportScheduleState(String dataFilePath) {
+        try (BufferedWriter br = new BufferedWriter(new FileWriter(dataFilePath))) {
+            br.write("time:" + systemScheduleTime + "\n");
+
+            for (Road road : roadMap.values()) {
+                br.write(exportRoadLaneList(road, "forward") + "\n");
+                if (road.isBidirectional()) {
+                    br.write(exportRoadLaneList(road, "backward") + "\n");
+                }
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    public String exportRoadLaneList(Road road, String direction) {
+        StringBuilder builder = new StringBuilder();
+        ArrayList<Lane> laneList;
+        if (direction.equals("forward"))
+            laneList = road.getLaneListBy(road.getEnd());
+        else
+            laneList = road.getLaneListBy(road.getStart());
+
+        builder.append(String.format("(%s,%s,[", road.getId(), direction));
+
+        for (int i = 0; i < road.getNumOfLanes(); i++) {
+            builder.append("[");
+            Lane lane = laneList.get(i);
+
+            for (int j = road.getLen(); j >= 1; j--) {
+                Car car = lane.getCarMap().get(j);
+                if (car == null)
+                    builder.append("-1");
+                else
+                    builder.append(car.getId());
+
+                builder.append(",");
+            }
+            builder.append("],");
+        }
+        builder.append("])");
+
+        return builder.toString();
     }
 }

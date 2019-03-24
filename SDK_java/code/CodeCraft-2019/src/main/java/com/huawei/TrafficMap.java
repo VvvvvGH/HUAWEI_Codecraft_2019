@@ -33,6 +33,20 @@ public class TrafficMap {
         });
     }
 
+    public void initGraphByDistanceAndWidth() {
+        crossMap.forEach((cross, crossObj) -> graph.addVertex(crossObj));
+        roads.forEach((roadId, road) -> {
+            CrossRoads from = crossMap.get(road.getStart());
+            CrossRoads to = crossMap.get(road.getEnd());
+            DefaultWeightedEdge edge = graph.addEdge(from, to);
+            graph.setEdgeWeight(edge, road.getLen()/(road.getNumOfLanes()*1.0));
+            if (road.isBidirectional()) {
+                DefaultWeightedEdge opposeEdge = graph.addEdge(to, from);
+                graph.setEdgeWeight(opposeEdge, road.getLen()/(road.getNumOfLanes()*1.0));
+            }
+        });
+    }
+
     public void initGraphByTime() {
         crossMap.forEach((cross, crossObj) -> graph.addVertex(crossObj));
         roads.forEach((roadId, road) -> {
@@ -107,7 +121,6 @@ public class TrafficMap {
         int time = 0;
         int count = 0;
 
-
         while (!priorityQueue.isEmpty()) {
             time++;
             count = 0;
@@ -136,7 +149,6 @@ public class TrafficMap {
     public void scheduleOneByOne() {
         initGraphByDistance();
 
-
         int time = 1;
         int current = 5;
 
@@ -152,14 +164,12 @@ public class TrafficMap {
             }
         }
 
-
         scheduleTest(current - 1);
 
     }
 
-    public void preSchedule() {
+    public void preSchedule(int max_car_limit) {
 
-        int max_car_limit = 26;
 
         this.getCars().forEach(
                 (carId, car) -> priorityQueue.offer(car)
@@ -220,59 +230,7 @@ public class TrafficMap {
             }
         }
     }
-//        while (count != cars.size()) {
-//
-//            Main.scheduler.clearGarage();
-//            priorityQueue.clear();
-//            this.getCars().forEach(
-//                    (carId, car) -> priorityQueue.offer(car)
-//            );
-//
-//            while (!priorityQueue.isEmpty()) {
-//                Car car = priorityQueue.peek();
-//                if (car == null || car.getPlanTime() > time)
-//                    continue;
-//
 
-//
-//                count++;
-//                localGarage.add(car);
-//
-//
-//            }
-//            time+=1;
-//        }
-
-
-//
-//    public void scheduleBaseOnFLow() {
-//        this.getCars().forEach(
-//                (carId, car) -> priorityQueue.offer(car)
-//        );
-//        int time = 0;
-//        int count = 0;
-//        int carFlowLimit = 10;
-//        while (!priorityQueue.isEmpty()) {
-//            time++;
-//            count = 0;
-//            while (true) {
-//                Car car = priorityQueue.peek();
-//                if (car == null || car.getPlanTime() > time || count >= carFlowLimit)
-//                    break;
-//
-//                car.setStartTime(time);
-//
-//                GraphPath path = shortestDistancePath(car.getFrom(), car.getTo());
-//                setCarPath(car, path);
-//                Main.scheduler.addToGarage(car);
-//                priorityQueue.remove(car);
-//                count++;
-//            }
-//            Main.scheduler.step();
-//        }
-//        Main.scheduler.stepUntilFinishDebug();
-//        Main.scheduler.printCarStates();
-//    }
 
     public void addCross(CrossRoads cross) {
         crossMap.putIfAbsent(cross.getId(), cross);
