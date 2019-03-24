@@ -250,7 +250,6 @@ class visualization(object):
     #
     def drawMap(self):
         img = np.ones((self.maxX, self.maxY, 3), np.uint8) * 255
-        self.plotInfo(img)
         # draw road
         for roadId in ROADNAMESPACE:
             self.plotRoad(roadId, img)
