@@ -35,6 +35,52 @@ public class TrafficMap {
         });
     }
 
+    public void initGraphByDistanceAndWidth() {
+        crossMap.forEach((cross, crossObj) -> graph.addVertex(crossObj));
+        roads.forEach((roadId, road) -> {
+            CrossRoads from = crossMap.get(road.getStart());
+            CrossRoads to = crossMap.get(road.getEnd());
+            DefaultWeightedEdge edge = graph.addEdge(from, to);
+            graph.setEdgeWeight(edge, road.getLen() / (road.getNumOfLanes() * 1.0));
+            if (road.isBidirectional()) {
+                DefaultWeightedEdge opposeEdge = graph.addEdge(to, from);
+                graph.setEdgeWeight(opposeEdge, road.getLen() / (road.getNumOfLanes() * 1.0));
+            }
+        });
+    }
+
+    public void initGraphCombined() {
+        crossMap.forEach((cross, crossObj) -> graph.addVertex(crossObj));
+
+        ArrayList<Road> roadArrayList = new ArrayList<>();
+        roadArrayList.addAll(roads.values());
+
+        // Descending
+        roadArrayList.sort(Road.roadCompareByLength);
+        int max_len = roadArrayList.get(0).getLen();
+
+        // Decending
+        roadArrayList.sort(Road.roadCompareBySpeed);
+        int max_speed = roadArrayList.get(0).getTopSpeed();
+
+        // Decending
+        roadArrayList.sort(Road.roadCompareBySpeed);
+        int max_width = roadArrayList.get(0).getNumOfLanes();
+
+        roads.forEach((roadId, road) -> {
+            double weight = (max_len / (road.getLen() * 1.0)) * ((road.getTopSpeed() * 1.0) / road.getTopSpeed());
+            CrossRoads from = crossMap.get(road.getStart());
+            CrossRoads to = crossMap.get(road.getEnd());
+            DefaultWeightedEdge edge = graph.addEdge(from, to);
+            graph.setEdgeWeight(edge, weight);
+            if (road.isBidirectional()) {
+                DefaultWeightedEdge opposeEdge = graph.addEdge(to, from);
+                graph.setEdgeWeight(opposeEdge, weight);
+            }
+        });
+    }
+
+
     public void initGraphByTime() {
         crossMap.forEach((cross, crossObj) -> graph.addVertex(crossObj));
         roads.forEach((roadId, road) -> {
@@ -120,16 +166,28 @@ public class TrafficMap {
 
                 GraphPath path = shortestDistancePath(graph, car.getFrom(), car.getTo());
 
-                car.setStartTime(time).setState(CarState.IN_GARAGE);
+
                 setCarPath(car, path);
 
+                boolean hasBusyPath = false;
+
+                for (int roadId : car.getPath()) {
+                    if (roads.get(roadId).calculateLoad() > 0.9) {
+                        hasBusyPath = true;
+//                        System.out.println("Busy path detected !");
+                    }
+                }
+                if (hasBusyPath) {
+                    car.setPlanTime(car.getPlanTime() + 1);
+                    continue;
+                }
+                car.setStartTime(time).setState(CarState.IN_GARAGE);
                 scheduler.addToGarage(car);
                 priorityQueue.remove(car);
                 count++;
             }
-            if (!scheduler.stepWithPlot())
+            if (!scheduler.step())
                 return -1;
-            scheduler.printCarStates();
         }
         if (!scheduler.stepUntilFinish(getCars().size()))
             return -1;
@@ -159,8 +217,8 @@ public class TrafficMap {
 
     }
 
-    public void preSchedule(int max_car_limit) {
-
+    public long preSchedule(int max_car_limit) {
+        scheduler.reset();
 
         this.getCars().forEach(
                 (carId, car) -> priorityQueue.offer(car)
@@ -179,24 +237,32 @@ public class TrafficMap {
                 if (car == null || car.getPlanTime() > time || count >= max_car_limit)
                     break;
 
-                car.setStartTime(time);
 
                 GraphPath path = shortestDistancePath(graph, car.getFrom(), car.getTo());
                 setCarPath(car, path);
 
                 // 计算每一时间单位最忙的路
                 car.getPath().forEach(road -> {
-                    if (roadCounter.containsKey(road))
-                        roadCounter.put(road, roadCounter.get(road) + 1);
-                    else
-                        roadCounter.put(road, 1);
+                    if (roads.get(road).calculateLoad() > 0.5) {
+                        if (roadCounter.containsKey(road))
+                            roadCounter.put(road, roadCounter.get(road) + 1);
+                        else
+                            roadCounter.put(road, 1);
+                    }
                 });
-
-
+                car.setStartTime(time).setState(CarState.IN_GARAGE);
+                scheduler.addToGarage(car);
                 priorityQueue.remove(car);
+
                 count++;
             }
+            if (!scheduler.step())
+                return -1;
+//            scheduler.printCarStates();
         }
+        if (!scheduler.stepUntilFinish(getCars().size()))
+            return -1;
+        scheduler.printCarStates();
 
         List<Map.Entry<Integer, Integer>> list = new ArrayList<>(roadCounter.entrySet());
 
@@ -207,19 +273,20 @@ public class TrafficMap {
             }
         });
 
-        //调整1/2的路的长度为原来1/3
-        int numOfRoadsToAdjust = roads.size() / 2;
-        for (int i = 0; i < numOfRoadsToAdjust; i++) {
+//        int numOfRoadsToAdjust = roads.size();
+        for (int i = 0; i < roadCounter.size(); i++) {
             Road road = roads.get(list.get(i).getKey());
             CrossRoads from = crossMap.get(road.getStart());
             CrossRoads to = crossMap.get(road.getEnd());
             DefaultWeightedEdge edge = graph.getEdge(from, to);
-            graph.setEdgeWeight(edge, road.getLen() / 1.5);
+            graph.setEdgeWeight(edge, road.getLen() *2);
             if (road.isBidirectional()) {
                 DefaultWeightedEdge opposeEdge = graph.getEdge(to, from);
-                graph.setEdgeWeight(opposeEdge, road.getLen() / 1.5);
+                graph.setEdgeWeight(opposeEdge, road.getLen() *2);
             }
         }
+
+        return Scheduler.systemScheduleTime;
     }
 
 

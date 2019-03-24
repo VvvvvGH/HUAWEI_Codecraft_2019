@@ -30,6 +30,12 @@ public class Road {
         }
     };
 
+    public static Comparator<Road> roadCompareByLength = (Road r1, Road r2) -> Integer.compare(r2.getLen(), r1.getLen());
+
+    public static Comparator<Road> roadCompareBySpeed = (Road r1, Road r2) -> Integer.compare(r2.getTopSpeed(), r1.getTopSpeed());
+
+    public static Comparator<Road> roadCompareByWidth = (Road r1, Road r2) -> Integer.compare(r2.getNumOfLanes(), r1.getNumOfLanes());
+
     public HashMap<Integer, PriorityQueue<Car>> getWaitingQueueMap() {
         return waitingQueueMap;
     }
@@ -323,10 +329,10 @@ public class Road {
         for (Lane lane : laneList) {
             numberOfCar += lane.getCarMap().size();
         }
-        return numberOfCar/(totalCapacity*1.0);
+        return numberOfCar / (totalCapacity * 1.0);
     }
 
-    public void resetRoadState(){
+    public void resetRoadState() {
         initLaneList();
         initWaitingQueue();
     }

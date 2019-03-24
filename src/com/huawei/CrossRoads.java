@@ -201,8 +201,8 @@ public class CrossRoads implements Comparable<CrossRoads> {
                 frontCarPosition = lane.getFrontCarPosition(0);
                 frontCarState = frontCar.getState();
 
-                //该车道被堵住了
-                if(frontCarPosition==1)
+                //该车道被堵住了　或者前车状态为wait
+                if(frontCarPosition==1||frontCar.getState()==CarState.WAIT)
                     continue;
 
                 if (frontCarPosition > s2)

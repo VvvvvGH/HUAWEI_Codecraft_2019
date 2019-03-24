@@ -164,6 +164,54 @@ class SchedulerTest6 {
                 () -> assertEquals(4,scheduler.getCar(901).getPosition())
         );
 
+
+        scheduler.step();
+
+        assertAll("Car position 1",
+                () -> assertEquals(1, scheduler.getCar(100).getLaneId()),
+                () -> assertEquals(10, scheduler.getCar(100).getPosition()),
+                () -> assertEquals( 1,scheduler.getCar(200).getLaneId()),
+                () -> assertEquals( 9,scheduler.getCar(200).getPosition()),
+                () -> assertEquals(1,scheduler.getCar(300).getLaneId()),
+                () -> assertEquals(8,scheduler.getCar(300).getPosition()),
+                () -> assertEquals(1,scheduler.getCar(101).getLaneId()),
+                () -> assertEquals(7,scheduler.getCar(101).getPosition()),
+                () -> assertEquals(1,scheduler.getCar(201).getLaneId()),
+                () -> assertEquals(6,scheduler.getCar(201).getPosition()),
+                () -> assertEquals(2,scheduler.getCar(301).getLaneId()),
+                () -> assertEquals(9,scheduler.getCar(301).getPosition())
+        );
+
+        assertAll("Car position 2",
+                () -> assertEquals(3, scheduler.getCar(400).getLaneId()),
+                () -> assertEquals(6, scheduler.getCar(400).getPosition()),
+                () -> assertEquals( 1,scheduler.getCar(500).getLaneId()),
+                () -> assertEquals( 4,scheduler.getCar(500).getPosition()),
+                () -> assertEquals(1,scheduler.getCar(600).getLaneId()),
+                () -> assertEquals(3,scheduler.getCar(600).getPosition()),
+                () -> assertEquals(1,scheduler.getCar(401).getLaneId()),
+                () -> assertEquals(5,scheduler.getCar(401).getPosition()),
+                () -> assertEquals(1,scheduler.getCar(501).getLaneId()),
+                () -> assertEquals(2,scheduler.getCar(501).getPosition()),
+                () -> assertEquals(1,scheduler.getCar(601).getLaneId()),
+                () -> assertEquals(1,scheduler.getCar(601).getPosition())
+        );
+
+        assertAll("Car position 3",
+                () -> assertEquals(2, scheduler.getCar(700).getLaneId()),
+                () -> assertEquals(6, scheduler.getCar(700).getPosition()),
+                () -> assertEquals( 2,scheduler.getCar(800).getLaneId()),
+                () -> assertEquals( 7,scheduler.getCar(800).getPosition()),
+                () -> assertEquals(2,scheduler.getCar(900).getLaneId()),
+                () -> assertEquals(8,scheduler.getCar(900).getPosition()),
+                () -> assertEquals(3,scheduler.getCar(701).getLaneId()),
+                () -> assertEquals(7,scheduler.getCar(701).getPosition()),
+                () -> assertEquals(3,scheduler.getCar(801).getLaneId()),
+                () -> assertEquals(8,scheduler.getCar(801).getPosition()),
+                () -> assertEquals(3,scheduler.getCar(901).getLaneId()),
+                () -> assertEquals(9,scheduler.getCar(901).getPosition())
+        );
+
     }
 
 }

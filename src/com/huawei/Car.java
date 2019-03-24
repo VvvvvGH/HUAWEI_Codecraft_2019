@@ -206,7 +206,7 @@ public class Car implements Comparable<Car> {
     }
 
     public Car setState(CarState state) {
-        if (getState() != state)
+        if (getState() != null && !getState().equals(state))
             Scheduler.carStateChanged = true;
 
         updateStateCounter(getState(), state);

@@ -94,10 +94,15 @@ public class Main {
 
         //运行规划
         trafficMap.initGraphByDistance();
-        trafficMap.preSchedule(25);
-        trafficMap.preSchedule(25);
-        trafficMap.preSchedule(25);
-        trafficMap.scheduleTest(25);
+
+        trafficMap.preSchedule(10);
+        trafficMap.preSchedule(10);
+        trafficMap.preSchedule(10);
+//        trafficMap.preSchedule(12);
+//        trafficMap.preSchedule(13 );
+
+
+        trafficMap.scheduleTest(30);
 
 
         //打印结果

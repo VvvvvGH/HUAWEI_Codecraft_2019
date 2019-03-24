@@ -15,7 +15,7 @@ public class Scheduler {
 
     // 基于统计的死锁检测，　若系统一段时间内状态没有发生变化，则认为是死锁
     public static boolean carStateChanged = false;
-    public final int DEADLOCK_DETECT_THRESHOLD = 100;
+    public final int DEADLOCK_DETECT_THRESHOLD = 1000;
     public int deadLockCounter = 0;
 
     public static Long totalScheduleTime;
@@ -62,43 +62,22 @@ public class Scheduler {
         return true;
     }
 
-    public void stepUntilFinishDebug() {
-        while (carStateCounter.get(CarState.OFF_ROAD) != carMap.size()) {
-            if (!step())
-                return;
+    public boolean stepUntilFinishDebug(int numberOfCars) {
+        while (carStateCounter.get(CarState.OFF_ROAD) != numberOfCars) {
+            if (!stepWithPlot())
+                return false;
             printCarStates();
         }
+        return true;
     }
 
     public boolean stepWithPlot() {
         plotScheduleState();
-        //全局车辆状态标识
-        carStateChanged = false;
-        //系统调度时间
-        systemScheduleTime += UNIT_TIME;
-
-        //       １升序循环整个地图中所有的道路
-        //       ２让所有在道路上的车开始行驶到等待或终止状态
-        driveAllCarOnRoad();
-
-        do {
-            // 应该用do while
-            for (CrossRoads cross : crossMap.values()) {
-                cross.schedule();
-            }
-        } while (!allCarInEndState());
-
-        driveCarInGarage();
-
-        if (detectDeadLock())
-            return false;
-
-        return true;
+        return step();
     }
 
     public boolean step() {
-        //全局车辆状态标识
-        carStateChanged = false;
+
         //系统调度时间
         systemScheduleTime += UNIT_TIME;
 
@@ -107,16 +86,19 @@ public class Scheduler {
         driveAllCarOnRoad();
 
         do {
+            //全局车辆状态标识
+//            carStateChanged = false;
+
             // 应该用do while
             for (CrossRoads cross : crossMap.values()) {
                 cross.schedule();
             }
+
+//            if (detectDeadLock())
+//                return false;
         } while (!allCarInEndState());
 
         driveCarInGarage();
-
-        if (detectDeadLock())
-            return false;
 
         return true;
     }
@@ -125,12 +107,12 @@ public class Scheduler {
     public boolean detectDeadLock() {
         if (!carStateChanged)
             deadLockCounter++;
+        else
+            deadLockCounter = 0;
         if (deadLockCounter == DEADLOCK_DETECT_THRESHOLD) {
             System.err.println("Dead lock detected!");
             return true;
         }
-        if (systemScheduleTime % DEADLOCK_DETECT_THRESHOLD == 0)
-            deadLockCounter = 0;
 
         return false;
     }
@@ -294,20 +276,18 @@ public class Scheduler {
         System.out.println();
     }
 
-    public void plotScheduleState(){
+    public void plotScheduleState() {
         String dataFilePath = "SDK_java/bin/config/data.txt";
         exportScheduleState(dataFilePath);
         String cmd = "python3 plotMap/visualization.py\n";
-        try
-        {
+        try {
             Process exeEcho = Runtime.getRuntime().exec("bash");
             exeEcho.getOutputStream().write(cmd.getBytes());
             exeEcho.getOutputStream().flush();
 
             //等待200毫秒,让Python画图
             Thread.currentThread().sleep(200);
-        } catch (Exception e)
-        {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
