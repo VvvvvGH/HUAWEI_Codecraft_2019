@@ -2,7 +2,7 @@ package com.huawei;
 
 import java.util.*;
 
-public class Road {
+public class Road  {
     private int id;
     private int len;
     private int topSpeed;
@@ -99,7 +99,6 @@ public class Road {
             Lane lane = null;
             // Get lane
             if (isBidirectional()) {
-                //FIXME: Gocha!!!!
                 if (car.getFrom() == this.getStart() && this.getEnd() == nextCrossRoadId)
                     lane = getLaneListBy(this.getEnd()).get(i - 1);
                 else
@@ -226,7 +225,7 @@ public class Road {
         Iterator<Car> it = waitingQueue.iterator();
         while (it.hasNext()) {
             Car car = it.next();
-            if (car.getState() == CarState.END)
+            if (car.getState() != CarState.WAIT)
                 it.remove();
         }
     }
@@ -323,6 +322,10 @@ public class Road {
         this.bidirectional = bidirectional;
     }
 
+    public void resetRoadState() {
+        initLaneList();
+        initWaitingQueue();
+    }
     public double calculateLoad() {
         int totalCapacity = getNumOfLanes() * getLen() * (isBidirectional() ? 2 : 1);
         int numberOfCar = 0;
@@ -332,9 +335,5 @@ public class Road {
         return numberOfCar / (totalCapacity * 1.0);
     }
 
-    public void resetRoadState() {
-        initLaneList();
-        initWaitingQueue();
-    }
 
 }

@@ -18,7 +18,8 @@ public class Scheduler {
     public final int DEADLOCK_DETECT_THRESHOLD = 1000;
     public int deadLockCounter = 0;
 
-    public static Long totalScheduleTime;
+    public static Long totalScheduleTime = 0L;
+    public static Long totalActualScheduleTime = 0L;
     public static Long systemScheduleTime = 0L;
     public static final int UNIT_TIME = 1;
 
@@ -49,8 +50,11 @@ public class Scheduler {
     public void printCarStates() {
 
         System.out.printf("Car State at time %d : OFF_ROAD: %d IN_GARAGE: %d WAIT: %d END: %d  \n", systemScheduleTime, carStateCounter.get(CarState.OFF_ROAD), carStateCounter.get(CarState.IN_GARAGE), carStateCounter.get(CarState.WAIT), carStateCounter.get(CarState.END));
-        if (carStateCounter.get(CarState.OFF_ROAD) == carMap.size())
-            System.out.println("系统调度时间: " + getSystemScheduleTime());
+        if (carStateCounter.get(CarState.OFF_ROAD) == carMap.size()) {
+            System.out.println("系统调度时间: " + systemScheduleTime);
+            System.out.println("所有车辆实际总调度时间: " + totalScheduleTime);
+            System.out.println("所有车辆总调度时间: " + totalActualScheduleTime);
+        }
 
     }
 
@@ -66,7 +70,6 @@ public class Scheduler {
         while (carStateCounter.get(CarState.OFF_ROAD) != numberOfCars) {
             if (!stepWithPlot())
                 return false;
-            printCarStates();
         }
         return true;
     }
@@ -87,15 +90,15 @@ public class Scheduler {
 
         do {
             //全局车辆状态标识
-//            carStateChanged = false;
+            carStateChanged = false;
 
             // 应该用do while
             for (CrossRoads cross : crossMap.values()) {
                 cross.schedule();
             }
 
-//            if (detectDeadLock())
-//                return false;
+            if (detectDeadLock())
+                return false;
         } while (!allCarInEndState());
 
         driveCarInGarage();
@@ -164,7 +167,7 @@ public class Scheduler {
 
                 if (road.putCarOnRoad(car, nextCrossRoadId)) {
                     // 上路成功,从车库中删除车辆。否则车等待下一时刻才开。
-                    car.setStartTime(systemScheduleTime);
+                    car.setActualStartTime(systemScheduleTime);
                     iterator.remove();
                 }
             } else if (car.getStartTime() < car.getPlanTime())
@@ -235,6 +238,8 @@ public class Scheduler {
         clearGarage();
 
         systemScheduleTime = 0L;
+        totalScheduleTime = 0L;
+        totalActualScheduleTime = 0L;
 
         carMap.forEach((carId, car) -> car.resetCarState());
         roadMap.forEach((roadId, road) -> road.resetRoadState());

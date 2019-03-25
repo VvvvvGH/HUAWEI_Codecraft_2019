@@ -3,7 +3,7 @@ package com.huawei;
 import org.apache.log4j.Logger;
 
 import java.io.*;
-import java.util.ArrayList;
+import java.util.*;
 
 public class Main {
     private static final Logger logger = Logger.getLogger(Main.class);
@@ -93,16 +93,30 @@ public class Main {
 
 
         //运行规划
-        trafficMap.initGraphByDistance();
-
+        trafficMap.initGraphEdge();
+        trafficMap.pathClassification();
+//
+//
         trafficMap.preSchedule(10);
         trafficMap.preSchedule(10);
         trafficMap.preSchedule(10);
-//        trafficMap.preSchedule(12);
-//        trafficMap.preSchedule(13 );
+        trafficMap.preSchedule(10);
 
+        long minTime = 9999L;
+        int bestVal = 40;
 
-        trafficMap.scheduleTest(30);
+        for (int i = bestVal; i < bestVal + 30; i++) {
+            System.out.println("Trying "+i);
+            long result = trafficMap.scheduleTest(i);
+            if (minTime > result && result != -1) {
+                minTime = result;
+                bestVal = i;
+            }
+        }
+
+        System.out.println(minTime);
+        System.out.println(bestVal);
+        trafficMap.scheduleTest(bestVal);
 
 
         //打印结果
