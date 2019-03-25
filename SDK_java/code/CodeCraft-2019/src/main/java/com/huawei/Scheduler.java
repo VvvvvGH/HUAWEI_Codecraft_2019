@@ -1,5 +1,9 @@
 package com.huawei;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.*;
 
 public class Scheduler {
@@ -11,10 +15,11 @@ public class Scheduler {
 
     // 基于统计的死锁检测，　若系统一段时间内状态没有发生变化，则认为是死锁
     public static boolean carStateChanged = false;
-    public final int DEADLOCK_DETECT_THRESHOLD = 100;
+    public final int DEADLOCK_DETECT_THRESHOLD = 1000;
     public int deadLockCounter = 0;
 
-    public static Long totalScheduleTime;
+    public static Long totalScheduleTime = 0L;
+    public static Long totalActualScheduleTime = 0L;
     public static Long systemScheduleTime = 0L;
     public static final int UNIT_TIME = 1;
 
@@ -45,8 +50,11 @@ public class Scheduler {
     public void printCarStates() {
 
         System.out.printf("Car State at time %d : OFF_ROAD: %d IN_GARAGE: %d WAIT: %d END: %d  \n", systemScheduleTime, carStateCounter.get(CarState.OFF_ROAD), carStateCounter.get(CarState.IN_GARAGE), carStateCounter.get(CarState.WAIT), carStateCounter.get(CarState.END));
-        if (carStateCounter.get(CarState.OFF_ROAD) == carMap.size())
-            System.out.println("系统调度时间: " + getSystemScheduleTime());
+        if (carStateCounter.get(CarState.OFF_ROAD) == carMap.size()) {
+            System.out.println("系统调度时间: " + systemScheduleTime);
+            System.out.println("所有车辆实际总调度时间: " + totalScheduleTime);
+            System.out.println("所有车辆总调度时间: " + totalActualScheduleTime);
+        }
 
     }
 
@@ -58,18 +66,21 @@ public class Scheduler {
         return true;
     }
 
-    public void stepUntilFinishDebug() {
-        while (carStateCounter.get(CarState.OFF_ROAD) != carMap.size()) {
-            if (!step())
-                return;
-            printCarStates();
+    public boolean stepUntilFinishDebug(int numberOfCars) {
+        while (carStateCounter.get(CarState.OFF_ROAD) != numberOfCars) {
+            if (!stepWithPlot())
+                return false;
         }
+        return true;
     }
 
+    public boolean stepWithPlot() {
+        plotScheduleState();
+        return step();
+    }
 
     public boolean step() {
-        //全局车辆状态标识
-        carStateChanged = false;
+
         //系统调度时间
         systemScheduleTime += UNIT_TIME;
 
@@ -78,16 +89,19 @@ public class Scheduler {
         driveAllCarOnRoad();
 
         do {
+            //全局车辆状态标识
+            carStateChanged = false;
+
             // 应该用do while
             for (CrossRoads cross : crossMap.values()) {
                 cross.schedule();
             }
+
+            if (detectDeadLock())
+                return false;
         } while (!allCarInEndState());
 
         driveCarInGarage();
-
-        if (detectDeadLock())
-            return false;
 
         return true;
     }
@@ -96,12 +110,12 @@ public class Scheduler {
     public boolean detectDeadLock() {
         if (!carStateChanged)
             deadLockCounter++;
+        else
+            deadLockCounter = 0;
         if (deadLockCounter == DEADLOCK_DETECT_THRESHOLD) {
             System.err.println("Dead lock detected!");
             return true;
         }
-        if (systemScheduleTime % DEADLOCK_DETECT_THRESHOLD == 0)
-            deadLockCounter = 0;
 
         return false;
     }
@@ -153,7 +167,7 @@ public class Scheduler {
 
                 if (road.putCarOnRoad(car, nextCrossRoadId)) {
                     // 上路成功,从车库中删除车辆。否则车等待下一时刻才开。
-                    car.setStartTime(systemScheduleTime);
+                    car.setActualStartTime(systemScheduleTime);
                     iterator.remove();
                 }
             } else if (car.getStartTime() < car.getPlanTime())
@@ -224,6 +238,8 @@ public class Scheduler {
         clearGarage();
 
         systemScheduleTime = 0L;
+        totalScheduleTime = 0L;
+        totalActualScheduleTime = 0L;
 
         carMap.forEach((carId, car) -> car.resetCarState());
         roadMap.forEach((roadId, road) -> road.resetRoadState());
@@ -263,5 +279,66 @@ public class Scheduler {
                 System.out.printf("Car %d state %-15s position %-3d lane %d\n", carId, car.getState(), car.getPosition(), car.getLaneId());
         });
         System.out.println();
+    }
+
+    public void plotScheduleState() {
+        String dataFilePath = "SDK_java/bin/config/data.txt";
+        exportScheduleState(dataFilePath);
+        String cmd = "python3 plotMap/visualization.py\n";
+        try {
+            Process exeEcho = Runtime.getRuntime().exec("bash");
+            exeEcho.getOutputStream().write(cmd.getBytes());
+            exeEcho.getOutputStream().flush();
+
+            //等待200毫秒,让Python画图
+            Thread.currentThread().sleep(200);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void exportScheduleState(String dataFilePath) {
+        try (BufferedWriter br = new BufferedWriter(new FileWriter(dataFilePath))) {
+            br.write("time:" + systemScheduleTime + "\n");
+
+            for (Road road : roadMap.values()) {
+                br.write(exportRoadLaneList(road, "forward") + "\n");
+                if (road.isBidirectional()) {
+                    br.write(exportRoadLaneList(road, "backward") + "\n");
+                }
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    public String exportRoadLaneList(Road road, String direction) {
+        StringBuilder builder = new StringBuilder();
+        ArrayList<Lane> laneList;
+        if (direction.equals("forward"))
+            laneList = road.getLaneListBy(road.getEnd());
+        else
+            laneList = road.getLaneListBy(road.getStart());
+
+        builder.append(String.format("(%s,%s,[", road.getId(), direction));
+
+        for (int i = 0; i < road.getNumOfLanes(); i++) {
+            builder.append("[");
+            Lane lane = laneList.get(i);
+
+            for (int j = road.getLen(); j >= 1; j--) {
+                Car car = lane.getCarMap().get(j);
+                if (car == null)
+                    builder.append("-1");
+                else
+                    builder.append(car.getId());
+
+                builder.append(",");
+            }
+            builder.append("],");
+        }
+        builder.append("])");
+
+        return builder.toString();
     }
 }

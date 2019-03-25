@@ -16,6 +16,7 @@ public class Car implements Comparable<Car> {
 
     private int currentSpeed = 0;
     private long startTime = -1;
+    private long actualStartTime = -1;
     private long endTime = -1;
     private int laneId = -1;
 
@@ -206,7 +207,7 @@ public class Car implements Comparable<Car> {
     }
 
     public Car setState(CarState state) {
-        if (getState() != state)
+        if (getState() != null && !getState().equals(state))
             Scheduler.carStateChanged = true;
 
         updateStateCounter(getState(), state);
@@ -223,6 +224,15 @@ public class Car implements Comparable<Car> {
         carStateCounter.put(now, carStateCounter.get(now) == null ? 1 : (carStateCounter.get(now) + 1));
         carStateCounter.put(original, carStateCounter.get(original) == null ? 0 : (carStateCounter.get(original) - 1));
 
+    }
+
+    public long getActualStartTime() {
+        return actualStartTime;
+    }
+
+    public Car setActualStartTime(long actualStartTime) {
+        this.actualStartTime = actualStartTime;
+        return this;
     }
 
     public void resetCarState() {
