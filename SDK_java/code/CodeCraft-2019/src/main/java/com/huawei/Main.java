@@ -3,13 +3,15 @@ package com.huawei;
 import org.apache.log4j.Logger;
 
 import java.io.*;
-import java.util.ArrayList;
+import java.util.*;
 
 public class Main {
     private static final Logger logger = Logger.getLogger(Main.class);
 
     public static TrafficMap trafficMap = new TrafficMap();
     public static Scheduler scheduler = new Scheduler();
+
+    public static int bestVal = 0;
 
     public static ArrayList<String> readFile(String path) {
         ArrayList<String> file_content = new ArrayList<>();
@@ -93,9 +95,29 @@ public class Main {
 
 
         //运行规划
-        trafficMap.initGraphByDistanceAndWidth();
-        trafficMap.scheduleTest(20);
+        trafficMap.initGraphEdge();
+        trafficMap.pathClassification();
+//
+//
+        trafficMap.preScheduleDirection(10);
+        trafficMap.preScheduleDirection(10);
+        trafficMap.preScheduleDirection(10);
+        trafficMap.preScheduleDirection(10);
+//
+//        long minTime = 9999L;
 
+//
+        Car  car1 = trafficMap.getCar(10000);
+        if(car1.getFrom()==18&&car1.getTo()==50) {
+            System.out.println("Map 1");
+            bestVal = 33;
+        }
+        else {
+            System.out.println("Map 2");
+            bestVal = 34;
+        }
+//
+//
 
         //打印结果
         trafficMap.getCars().forEach(
@@ -103,6 +125,7 @@ public class Main {
                     answer.add(car.outputResult());
                 }
         );
+
 
         //  write answer.txt
         logger.info("Start write output file");

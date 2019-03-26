@@ -76,12 +76,12 @@ public class Car implements Comparable<Car> {
 
     public int compareTo(Car car) {
         // 根据速度排序
-        if (car.getPlanTime() / (car.getTopSpeed() * 1.0) > getPlanTime() / (getTopSpeed() * 1.0))
+        if (getTopSpeed()>car.getTopSpeed())
             return -1;
-        else if (car.getPlanTime() / (car.getTopSpeed() * 1.0) < getPlanTime() / (getTopSpeed() * 1.0))
-            return 1;
-        else
+        else if (getTopSpeed()==car.getTopSpeed())
             return 0;
+        else
+            return 1;
     }
 
     public int getId() {

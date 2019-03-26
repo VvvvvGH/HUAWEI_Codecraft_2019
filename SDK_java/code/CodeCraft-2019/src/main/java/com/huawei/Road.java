@@ -2,7 +2,7 @@ package com.huawei;
 
 import java.util.*;
 
-public class Road {
+public class Road  {
     private int id;
     private int len;
     private int topSpeed;
@@ -29,6 +29,12 @@ public class Road {
             else return -1;
         }
     };
+
+    public static Comparator<Road> roadCompareByLength = (Road r1, Road r2) -> Integer.compare(r2.getLen(), r1.getLen());
+
+    public static Comparator<Road> roadCompareBySpeed = (Road r1, Road r2) -> Integer.compare(r2.getTopSpeed(), r1.getTopSpeed());
+
+    public static Comparator<Road> roadCompareByWidth = (Road r1, Road r2) -> Integer.compare(r2.getNumOfLanes(), r1.getNumOfLanes());
 
     public HashMap<Integer, PriorityQueue<Car>> getWaitingQueueMap() {
         return waitingQueueMap;
@@ -93,7 +99,6 @@ public class Road {
             Lane lane = null;
             // Get lane
             if (isBidirectional()) {
-                //FIXME: Gocha!!!!
                 if (car.getFrom() == this.getStart() && this.getEnd() == nextCrossRoadId)
                     lane = getLaneListBy(this.getEnd()).get(i - 1);
                 else
@@ -220,7 +225,7 @@ public class Road {
         Iterator<Car> it = waitingQueue.iterator();
         while (it.hasNext()) {
             Car car = it.next();
-            if (car.getState() == CarState.END)
+            if (car.getState() != CarState.WAIT)
                 it.remove();
         }
     }
@@ -317,18 +322,18 @@ public class Road {
         this.bidirectional = bidirectional;
     }
 
+    public void resetRoadState() {
+        initLaneList();
+        initWaitingQueue();
+    }
     public double calculateLoad() {
         int totalCapacity = getNumOfLanes() * getLen() * (isBidirectional() ? 2 : 1);
         int numberOfCar = 0;
         for (Lane lane : laneList) {
             numberOfCar += lane.getCarMap().size();
         }
-        return numberOfCar/(totalCapacity*1.0);
+        return numberOfCar / (totalCapacity * 1.0);
     }
 
-    public void resetRoadState(){
-        initLaneList();
-        initWaitingQueue();
-    }
 
 }
