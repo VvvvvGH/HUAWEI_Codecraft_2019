@@ -276,6 +276,8 @@ public class CrossRoads implements Comparable<CrossRoads> {
 
 
     private Turn findDirection(int from, int to) {
+        if(getRoadDirection().get(from) == null || getRoadDirection().get(to) ==null)
+            System.out.println();
         int val = getRoadDirection().get(from).ordinal() - getRoadDirection().get(to).ordinal();
         if (Math.abs(val) == 2)
             return Turn.STRAIGHT;

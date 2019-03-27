@@ -97,7 +97,12 @@ public class Main {
         trafficMap.preSchedule(25);
         trafficMap.preSchedule(25);
         trafficMap.preSchedule(25);
-        trafficMap.scheduleTest(25);
+        //trafficMap.scheduleTest(25);
+        trafficMap.scheduleTest2(20,true);
+        trafficMap.scheduleTest2(20,false);
+        trafficMap.scheduleTest2(20,false);
+        trafficMap.scheduleTest2(20,false);
+
 
 
         //打印结果

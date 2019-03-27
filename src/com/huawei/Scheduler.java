@@ -257,6 +257,10 @@ public class Scheduler {
         carMap.forEach((carId, car) -> car.resetCarState());
         roadMap.forEach((roadId, road) -> road.resetRoadState());
     }
+    // FIXME
+    public void resetTime(){
+        systemScheduleTime = 0L;
+    }
 
     public Long getScheduleTime() {
         return totalScheduleTime;

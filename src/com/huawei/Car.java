@@ -1,9 +1,9 @@
 package com.huawei;
 
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
+import org.jgrapht.GraphPath;
+
+import java.util.*;
 
 public class Car implements Comparable<Car> {
     private int id;
@@ -21,6 +21,78 @@ public class Car implements Comparable<Car> {
 
     private CarState state;
     private int position = -1;
+
+    private TreeMap<Long,ArrayList<Integer>> routes = new TreeMap<>();
+    long maxFitness = -1;
+    long basePathLen = -1;
+    long baseTime = -1;
+
+
+    private ArrayList<Integer> oldPath = new ArrayList<>();
+    public void setOldPath(ArrayList<Integer> oldPath){
+        long time = (baseTime-(endTime-startTime))/baseTime;
+        long pathLen = path.size();
+        long fitness;
+        pathLen = (basePathLen-pathLen)/pathLen;
+        fitness = time + pathLen;
+        this.oldPath = oldPath;
+    }
+
+    long old_fitness = -100;
+    long old_pathLen = -100;
+    long old_time = -100;
+    // 更新道路，并淘汰最小的适应性的道路
+    public void updatePath(){
+        long time = (baseTime-(endTime-startTime))/baseTime;
+        long pathLen = path.size();
+        long fitness;
+        pathLen = (basePathLen-pathLen)/pathLen;
+        // 适应度计算方式？？ pathLen?
+        fitness = time;
+        if(fitness>old_fitness)
+            oldPath = path;
+    }
+
+    // 未完成（ScheduleTest3），未使用的方法
+    public void addRoute(Iterator<Map.Entry<Long, ArrayList<Integer>>> it,ArrayList<Integer> route, boolean intialise){
+        long time = endTime-startTime;
+        long pathLen = path.size();
+        long fitness;
+        if(baseTime == -1L) // FIXME -1
+            baseTime = time;
+        time = (baseTime-time)/baseTime;
+        if(basePathLen == -1L)
+            basePathLen = pathLen;
+        pathLen = (basePathLen-pathLen)/pathLen;
+        // TODO: 参数调整
+        fitness = time + pathLen;
+        if( maxFitness < (fitness = time + pathLen))
+            maxFitness = fitness;
+        if(intialise)
+            routes.put(fitness - 4, route);
+        else if(fitness > routes.firstKey()){
+            if(it!=null)
+                it.remove();
+            //else
+                //routes.remove(routes.firstKey());
+            routes.put(fitness,route);
+        }
+    }
+    // 获取该车当前的路径的适应度
+    public long getCurrentFitness(){
+        long time = (baseTime-(endTime-startTime))/baseTime;
+        long pathLen = path.size();
+        long fitness;
+        pathLen = (basePathLen-pathLen)/pathLen;
+        fitness = time + pathLen;
+        return fitness;
+    }
+    public TreeMap<Long,ArrayList<Integer>> getRoutes(){
+        return routes;
+    }
+    public ArrayList<Integer> getFittest(){
+        return routes.get(routes.lastKey());
+    }
 
 
     public static Comparator<Car> idComparator = Comparator.comparing(Car::getId);
