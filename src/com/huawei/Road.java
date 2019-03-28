@@ -2,7 +2,7 @@ package com.huawei;
 
 import java.util.*;
 
-public class Road  {
+public class Road {
     private int id;
     private int len;
     private int topSpeed;
@@ -22,11 +22,10 @@ public class Road  {
     public static Comparator<Car> carComparator = new Comparator<Car>() {
         @Override
         public int compare(Car o1, Car o2) {
-            if (o1.getPosition() < o2.getPosition())
-                return 1;
-            else if (o1.getPosition() == o2.getPosition() && o1.getLaneId() > o2.getLaneId())
-                return 1;
-            else return -1;
+            int i1 = o1.getPosition() * 100 - o1.getLaneId();
+            int i2 = o2.getPosition() * 100 - o2.getLaneId();
+
+            return i2 - i1;
         }
     };
 
@@ -228,6 +227,13 @@ public class Road  {
             if (car.getState() != CarState.WAIT)
                 it.remove();
         }
+        Car car;
+        if (waitingQueue.size() >= 2) {
+            car = waitingQueue.remove();
+            waitingQueue.add(car);
+        }
+
+
     }
 
     public void clearWaitingQueue() {
@@ -260,8 +266,10 @@ public class Road  {
             Iterator<Car> it = lane.getCarMap().values().iterator();
             while (it.hasNext()) {
                 Car carOnLane = it.next();
-                if (carOnLane.getId() == car.getId())
+                if (carOnLane.getId() == car.getId()) {
                     it.remove();
+                    return;
+                }
             }
         }
     }
@@ -326,6 +334,7 @@ public class Road  {
         initLaneList();
         initWaitingQueue();
     }
+
     public double calculateLoad() {
         int totalCapacity = getNumOfLanes() * getLen() * (isBidirectional() ? 2 : 1);
         int numberOfCar = 0;
@@ -335,5 +344,68 @@ public class Road  {
         return numberOfCar / (totalCapacity * 1.0);
     }
 
+    public void updateLane(Lane lane) {
+        if (lane == null) {
+            System.err.println("Road#updateLane#error");
+            System.exit(0);
+        }
+
+        if (lane.isEmpty()) {
+            //车道为空 没必要继续
+            return;
+        }
+
+        List<Integer> positionList = lane.getDescendingPositionList();
+        for (Integer position : positionList) {
+            Car car = lane.getCar(position);
+            if (car.getState() != CarState.WAIT) {
+                continue;
+            }
+            int sv1 = car.getCurrentSpeed(); // 当前车速在当前道路的最大行驶距离
+            int front = lane.getFrontCarPosition(position);
+            if (front != -1) { // 前方有车
+                Car frontCar = lane.getCar(front);
+                CarState state = frontCar.getState();
+                int dist = frontCar.getPosition() - car.getPosition() - 1;
+                if (sv1 <= dist) {
+                    car.setPosition(sv1 + car.getPosition()).setState(CarState.END);
+                } else {
+                    // 会碰上车。
+                    if (state == CarState.END) {
+                        car.setPosition(frontCar.getPosition() - 1).setState(CarState.END);
+                    } else if (state == CarState.WAIT) {
+                        car.setState(CarState.WAIT);
+                    } else {
+                        System.err.println("Road#moveCarsOnRoad#error");
+                    }
+                }
+            } else {
+                // 前方没有车
+                // 需要等于
+                if (sv1 <= this.getLen() - position) {
+                    car.setPosition(sv1 + car.getPosition()).setState(CarState.END);
+                } else { // 可以出路口
+                    car.setState(CarState.WAIT);
+                }
+            }
+            if (car.getPosition() != position) {
+                lane.updateCar(car, position, car.getPosition());
+            }
+        }
+    }
+
+    public Lane laneContainCar(Car car) {
+        Lane laneContainCar = null;
+        for (Lane l : getLaneList()) {
+            if (l.getCarMap().containsValue(car)) {
+                laneContainCar = l;
+                break;
+            }
+        }
+        if (laneContainCar == null) {
+            System.err.println("Road#laneContainCar#null");
+        }
+        return laneContainCar;
+    }
 
 }

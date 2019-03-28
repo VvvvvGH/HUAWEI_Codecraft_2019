@@ -27,6 +27,11 @@ public class TrafficMap {
         }
     };
 
+    private final int DIRECTION = 1;
+    // Direction = 1 north south
+    // Direction = 2 east west
+    // Direction = 3 both
+
     AStarShortestPath aStarShortestPath = new AStarShortestPath(graph, heuristic);
 
     DijkstraShortestPath dijkstraShortestPath = new DijkstraShortestPath(graph);
@@ -41,22 +46,41 @@ public class TrafficMap {
 
     public void initGraphEdge() {
 
-
-
         crossMap.forEach((cross, crossObj) -> graph.addVertex(crossObj));
         roads.forEach((roadId, road) -> {
             CrossRoads from = crossMap.get(road.getStart());
             CrossRoads to = crossMap.get(road.getEnd());
-            graph.removeAllEdges(from,to);
+            graph.removeAllEdges(from, to);
 
             RoadEdge roadEdge = new RoadEdge(road, from, to);
             graph.setEdgeWeight(roadEdge, roadEdge.road.getLen());
             graph.addEdge(from, to, roadEdge);
 
             if (road.isBidirectional()) {
-                graph.removeAllEdges(to,from);
+                graph.removeAllEdges(to, from);
                 RoadEdge roadEdge1 = new RoadEdge(road, to, from);
                 graph.setEdgeWeight(roadEdge1, roadEdge1.road.getLen());
+                graph.addEdge(to, from, roadEdge1);
+            }
+        });
+    }
+
+    public void initGraphEdgeBySpeed() {
+
+        crossMap.forEach((cross, crossObj) -> graph.addVertex(crossObj));
+        roads.forEach((roadId, road) -> {
+            CrossRoads from = crossMap.get(road.getStart());
+            CrossRoads to = crossMap.get(road.getEnd());
+            graph.removeAllEdges(from, to);
+
+            RoadEdge roadEdge = new RoadEdge(road, from, to);
+            graph.setEdgeWeight(roadEdge, roadEdge.road.getLen() / roadEdge.road.getTopSpeed());
+            graph.addEdge(from, to, roadEdge);
+
+            if (road.isBidirectional()) {
+                graph.removeAllEdges(to, from);
+                RoadEdge roadEdge1 = new RoadEdge(road, to, from);
+                graph.setEdgeWeight(roadEdge1, roadEdge1.road.getLen() / roadEdge.road.getTopSpeed());
                 graph.addEdge(to, from, roadEdge1);
             }
         });
@@ -68,10 +92,10 @@ public class TrafficMap {
             CrossRoads from = crossMap.get(road.getStart());
             CrossRoads to = crossMap.get(road.getEnd());
             RoadEdge roadEdge = graph.getEdge(from, to);
-            graph.setEdgeWeight(roadEdge, roadEdge.getWeight());
+            graph.setEdgeWeight(roadEdge, roadEdge.getWeight(graph.getEdgeWeight(roadEdge)));
             if (road.isBidirectional()) {
                 RoadEdge roadEdge1 = graph.getEdge(to, from);
-                graph.setEdgeWeight(roadEdge1, roadEdge1.getWeight());
+                graph.setEdgeWeight(roadEdge1, roadEdge1.getWeight(graph.getEdgeWeight(roadEdge1)));
             }
         });
     }
@@ -194,20 +218,21 @@ public class TrafficMap {
 
 
     public Long scheduleTest(int carFlowLimit) {
-
         scheduler.reset();
+        updateGraphEdge();
 
-        ConcurrentLinkedQueue<Car> carQueue = new ConcurrentLinkedQueue<>();
-        carQueue.addAll(carOrderByStartList);
+//        ConcurrentLinkedQueue<Car> carQueue = new ConcurrentLinkedQueue<>();
+//        carQueue.addAll(carOrderByStartList);
 
 //        priorityQueue.clear();
 //        this.getCars().forEach(
 //                (carId, car) -> priorityQueue.offer(car)
 //        );
-//
+
 //        PriorityQueue<Car> carQueue = priorityQueue;
 
         HashMap<Integer, Integer> carPlanTime = new HashMap<>();
+
 
         cars.forEach((carId, car) -> {
             carPlanTime.put(carId, car.getPlanTime());
@@ -215,43 +240,83 @@ public class TrafficMap {
 
         int time = 0;
         int count = 0;
-        while (!carQueue.isEmpty()) {
+        int speedGap = 2;
+
+        HashMap<Integer, PriorityQueue<Car>> carDirection = directionClassification(DIRECTION);
+
+        for (int i = 0; i <= 1; i++) {
+
+            PriorityQueue<Car> carQueue = carDirection.get(i);
+
             time += 2;
-            count = 0;
-            while (true) {
-                Car car = carQueue.peek();
-                if (car == null || carPlanTime.get(car.getId()) > time || count >= carFlowLimit)
-                    break;
 
-                GraphPath path = shortestDistancePath(graph, car.getFrom(), car.getTo());
-                setCarPath(car, path);
+            while (!carQueue.isEmpty()) {
+                time++;
+                count = 0;
+//                carFlowLimit = carFlowControl(carQueue);
 
-                boolean hasBusyPath = false;
+                while (true) {
 
-                for (int roadId : car.getPath()) {
-                    if (roads.get(roadId).calculateLoad() > 0.90) {
-                        hasBusyPath = true;
+                    Car car = carQueue.peek();
+                    if (car == null || carPlanTime.get(car.getId()) > time || count >= carFlowLimit)
+                        break;
+
+//                    if (car.getTopSpeed() != speedGap) {
+//                        speedGap = car.getTopSpeed();
+//                        carFlowLimit = 5;
+//                        System.out.println(carQueue.size());
+//                        System.out.println("Speed gap detected!");
+//                    }
+
+                    GraphPath path = shortestDistancePath(graph, car.getFrom(), car.getTo());
+                    setCarPath(car, path);
+
+                    boolean hasBusyPath = false;
+
+                    for (int roadId : car.getPath()) {
+                        if (roads.get(roadId).calculateLoad() > 0.90) {
+                            hasBusyPath = true;
+                        }
                     }
-                }
-                if (hasBusyPath) {
-                    carPlanTime.put(car.getId(), carPlanTime.get(car.getId()) + 1);
-                    continue;
-                }
+                    if (hasBusyPath) {
+                        carPlanTime.put(car.getId(), carPlanTime.get(car.getId()) + 1);
+                        continue;
+                    }
 
-                car.setStartTime(time).setState(CarState.IN_GARAGE);
-                scheduler.addToGarage(car);
-                carQueue.remove(car);
-                count++;
+                    car.setStartTime(time).setState(CarState.IN_GARAGE);
+                    scheduler.addToGarage(car);
+                    carQueue.remove(car);
+                    count++;
 
+                }
+                if (!scheduler.step())
+                    return -1L;
+                updateGraphEdge();
             }
-            if (!scheduler.step())
-                return -1L;
         }
+
+
         if (!scheduler.stepUntilFinish(getCars().size()))
             return -1L;
         scheduler.printCarStates();
         return scheduler.getSystemScheduleTime();
     }
+
+    public int carFlowControl(Queue carQueue) {
+        int carFlowLimit = Main.bestVal;
+//        if (carQueue.size() > 9000)
+//            carFlowLimit = 25;
+//        else if (carQueue.size() > 5000 && carQueue.size() < 9000)
+//            carFlowLimit = 21;
+//        else if (carQueue.size() < 5000)
+//            carFlowLimit = 23;
+//
+//        if (carQueue.size() < 500) {
+//            initGraphEdgeBySpeed();
+//        }
+        return carFlowLimit;
+    }
+
 
     public void pathClassification() {
         priorityQueue.clear();
@@ -294,12 +359,64 @@ public class TrafficMap {
 
     }
 
+    public HashMap<Integer, PriorityQueue<Car>> directionClassification(int direction) {
+        // Direction = 1 north south
+        // Direction = 2 east west
+        // Direction = 3 both
+
+        priorityQueue.clear();
+
+        // 0 is north, 1 is south
+        HashMap<Integer, PriorityQueue<Car>> directionMap = new HashMap<>();
+
+        directionMap.put(1, new PriorityQueue<>());
+        directionMap.put(0, new PriorityQueue<>());
+
+        this.getCars().forEach(
+                (carId, car) -> priorityQueue.offer(car)
+        );
+
+        while (!priorityQueue.isEmpty()) {
+            Car car = priorityQueue.remove();
+            GraphPath<CrossRoads, RoadEdge> path = shortestDistancePath(graph, car.getFrom(), car.getTo());
+
+            double directionSum = 0;
+            for (RoadEdge roadEdge : path.getEdgeList()) {
+                CrossRoads.RoadPosition roadPosition = roadEdge.getSource().getRoadDirection().get(roadEdge.road.getId());
+                if (roadPosition == CrossRoads.RoadPosition.NORTH&&direction==1||direction==3) {
+                    directionSum += roadEdge.road.getLen();
+                } else if (roadPosition == CrossRoads.RoadPosition.SOUTH&&direction==1||direction==3)
+                    directionSum -= roadEdge.road.getLen();
+                else if (roadPosition == CrossRoads.RoadPosition.EAST&&direction==2||direction==3) {
+                    directionSum += roadEdge.road.getLen();
+                } else if (roadPosition == CrossRoads.RoadPosition.WEST&&direction==2||direction==3)
+                    directionSum -= roadEdge.road.getLen();
+            }
+            if (directionSum <= 0)
+                //South
+                directionMap.get(1).offer(car);
+            else
+                //Notrh
+                directionMap.get(0).offer(car);
+
+        }
+        return directionMap;
+
+    }
+
     public long preSchedule(int max_car_limit) {
         scheduler.reset();
 
-        ConcurrentLinkedQueue<Car> carQueue = new ConcurrentLinkedQueue<>();
-        carQueue.addAll(carOrderByStartList);
+//        ConcurrentLinkedQueue<Car> carQueue = new ConcurrentLinkedQueue<>();
+//        carQueue.addAll(carOrderByStartList);
+//
 
+        priorityQueue.clear();
+        this.getCars().forEach(
+                (carId, car) -> priorityQueue.offer(car)
+        );
+
+        PriorityQueue<Car> carQueue = priorityQueue;
 
         //Busy path counter
         TreeMap<Integer, Integer> roadCounter = new TreeMap<>();
@@ -362,6 +479,87 @@ public class TrafficMap {
         }
 
         return Scheduler.systemScheduleTime;
+    }
+
+    public long preScheduleDirection(int max_car_limit) {
+        scheduler.reset();
+
+//        ConcurrentLinkedQueue<Car> carQueue = new ConcurrentLinkedQueue<>();
+//        carQueue.addAll(carOrderByStartList);
+//
+
+        HashMap<Integer, PriorityQueue<Car>> carDirection = directionClassification(DIRECTION);
+
+
+        //Busy path counter
+        TreeMap<Integer, Integer> roadCounter = new TreeMap<>();
+
+        int time = 0;
+        int count = 0;
+        for (int i = 0; i <= 1; i++) {
+
+            PriorityQueue<Car> carQueue = carDirection.get(i);
+            while (!carQueue.isEmpty()) {
+                time++;
+                count = 0;
+                while (true) {
+                    Car car = carQueue.peek();
+                    if (car == null || car.getPlanTime() > time || count >= max_car_limit)
+                        break;
+
+
+                    GraphPath path = shortestDistancePath(graph, car.getFrom(), car.getTo());
+                    setCarPath(car, path);
+
+                    // 计算每一时间单位最忙的路
+                    car.getPath().forEach(road -> {
+                        if (roads.get(road).calculateLoad() > 0.5) {
+                            if (roadCounter.containsKey(road))
+                                roadCounter.put(road, roadCounter.get(road) + 1);
+                            else
+                                roadCounter.put(road, 1);
+                        }
+                    });
+                    car.setStartTime(time).setState(CarState.IN_GARAGE);
+                    scheduler.addToGarage(car);
+                    carQueue.remove(car);
+
+                    count++;
+                }
+                if (!scheduler.step())
+                    return -1;
+            }
+        }
+        if (!scheduler.stepUntilFinish(getCars().size()))
+            return -1;
+        scheduler.printCarStates();
+
+        List<Map.Entry<Integer, Integer>> list = new ArrayList<>(roadCounter.entrySet());
+
+        Collections.sort(list, new Comparator<Map.Entry<Integer, Integer>>() {
+            public int compare(Map.Entry<Integer, Integer> o1, Map.Entry<Integer, Integer> o2) {
+                return o2.getValue().compareTo(o1.getValue());
+            }
+        });
+
+        int numOfRoadsToAdjust = roadCounter.size();
+        for (int i = 0; i < numOfRoadsToAdjust; i++) {
+            Road road = roads.get(list.get(i).getKey());
+            CrossRoads from = crossMap.get(road.getStart());
+            CrossRoads to = crossMap.get(road.getEnd());
+            RoadEdge edge = graph.getEdge(from, to);
+            graph.setEdgeWeight(edge, road.getLen() * 1.5);
+            if (road.isBidirectional()) {
+                RoadEdge opposeEdge = graph.getEdge(to, from);
+                graph.setEdgeWeight(opposeEdge, road.getLen() * 1.5);
+            }
+        }
+
+        return Scheduler.systemScheduleTime;
+    }
+
+    public void exportGraphWeight() {
+
     }
 
 

@@ -8,8 +8,8 @@ public class RoadEdge extends DefaultWeightedEdge {
     protected Road road;
     protected CrossRoads from;
     protected CrossRoads to;
-    protected double preWeight=0.0;
-
+    protected double weightBefore = 0.0;
+    protected double weightNow = 0.0;
 
     public RoadEdge() {
         super();
@@ -32,31 +32,40 @@ public class RoadEdge extends DefaultWeightedEdge {
         return to;
     }
 
-    @Override
-    protected double getWeight() {
-        preWeight = costEstimation();
-        return preWeight;
+    protected double getWeight(double before) {
+
+        if (before != 99999)
+            weightBefore = before;
+
+
+        if (calculateLoad() > 0.8)
+            return 99999;
+//        else if (calculateLoad() < 0.05)
+//            return 10.123;
+//        else
+        return weightBefore;
     }
 
-    private double costEstimation() {
-        double distance = road.getLen();
-        double width = road.getNumOfLanes();
-        double speed = road.getTopSpeed();
-        double load = calculateLoad();
-
-        double cost=distance;
-        if(preWeight==0.0){
-            cost = distance/speed;
-        }else
-            cost=preWeight;
-
-        if(load>0.5)
-            cost = cost*2;
-
-
-
-        return cost;
-    }
+//    private double costEstimation() {
+////        double distance = road.getLen();
+////        double width = road.getNumOfLanes();
+////        double speed = road.getTopSpeed();
+////        double load = calculateLoad();
+////
+////        double cost=distance;
+////        if(preWeight==0.0){
+////            cost = distance/speed;
+////        }else
+////            cost=preWeight;
+////
+////        if(load>0.5)
+////            cost = cost*2;
+//
+//
+//
+//
+//        return preWeight;
+//    }
 
     public double calculateLoad() {
         double capacity = road.getNumOfLanes() * road.getLen();

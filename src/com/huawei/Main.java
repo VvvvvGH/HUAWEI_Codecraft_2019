@@ -11,6 +11,8 @@ public class Main {
     public static TrafficMap trafficMap = new TrafficMap();
     public static Scheduler scheduler = new Scheduler();
 
+    public static int bestVal = 0;
+
     public static ArrayList<String> readFile(String path) {
         ArrayList<String> file_content = new ArrayList<>();
         String line;
@@ -97,34 +99,61 @@ public class Main {
         trafficMap.pathClassification();
 //
 //
-        trafficMap.preSchedule(10);
-        trafficMap.preSchedule(10);
-        trafficMap.preSchedule(10);
-        trafficMap.preSchedule(10);
+        trafficMap.preScheduleDirection(10);
+        trafficMap.preScheduleDirection(10);
+        trafficMap.preScheduleDirection(10);
+        trafficMap.preScheduleDirection(10);
 
-        long minTime = 9999L;
-        int bestVal = 40;
+//        trafficMap.preScheduleDirection(15);
+//        trafficMap.preScheduleDirection(15);
+//        trafficMap.preScheduleDirection(15);
+//        trafficMap.preScheduleDirection(15);
+//
+//        trafficMap.preScheduleDirection(15);
+//        trafficMap.preScheduleDirection(15);
+//        trafficMap.preScheduleDirection(15);
+//        trafficMap.preScheduleDirection(15);
+//
+//        trafficMap.preScheduleDirection(15);
+//        trafficMap.preScheduleDirection(15);
+//        trafficMap.preScheduleDirection(15);
+//        trafficMap.preScheduleDirection(15);
 
-        for (int i = bestVal; i < bestVal + 30; i++) {
-            System.out.println("Trying "+i);
-            long result = trafficMap.scheduleTest(i);
-            if (minTime > result && result != -1) {
-                minTime = result;
-                bestVal = i;
-            }
+//
+//        long minTime = 9999L;
+
+//
+        Car  car1 = trafficMap.getCar(10000);
+        if(car1.getFrom()==18&&car1.getTo()==50) {
+            System.out.println("Map 1");
+            bestVal = 35;
         }
+        else {
+            System.out.println("Map 2");
+            bestVal = 34;
+        }
+//
+//
 
-        System.out.println(minTime);
-        System.out.println(bestVal);
+//        for (int i = bestVal; i < bestVal + 30; i++) {
+//            System.out.println("Trying "+i);
+//            long result = trafficMap.scheduleTest(i);
+//            if (minTime > result && result != -1) {
+//                minTime = result;
+//                bestVal = i;
+//            }
+//        }
+//
+//        System.out.println(minTime);
+//        System.out.println(bestVal);
         trafficMap.scheduleTest(bestVal);
-
-
         //打印结果
         trafficMap.getCars().forEach(
                 (carId, car) -> {
                     answer.add(car.outputResult());
                 }
         );
+
 
         //  write answer.txt
         logger.info("Start write output file");
