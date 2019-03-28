@@ -65,6 +65,34 @@ public class TrafficMap {
         });
     }
 
+    public void initGraphEdgeByWeight(double[] weights) {
+
+        crossMap.forEach((cross, crossObj) -> graph.addVertex(crossObj));
+        Iterator<Integer> it = roads.keySet().iterator();
+        int i=0;
+        while(it.hasNext()){
+            Integer roadId = it.next();
+            Road road = roads.get(roadId);
+            CrossRoads from = crossMap.get(road.getStart());
+            CrossRoads to = crossMap.get(road.getEnd());
+            graph.removeAllEdges(from, to);
+
+            RoadEdge roadEdge = new RoadEdge(road, from, to);
+            graph.setEdgeWeight(roadEdge, weights[i]);
+            graph.addEdge(from, to, roadEdge);
+
+            if (road.isBidirectional()) {
+                graph.removeAllEdges(to, from);
+                RoadEdge roadEdge1 = new RoadEdge(road, to, from);
+                graph.setEdgeWeight(roadEdge1, weights[i]);
+                graph.addEdge(to, from, roadEdge1);
+            }
+            i++;
+            System.out.print(graph.getEdgeWeight(roadEdge)+"-");
+        }
+        System.out.println();
+    }
+
     public void initGraphEdgeBySpeed() {
 
         crossMap.forEach((cross, crossObj) -> graph.addVertex(crossObj));
@@ -216,6 +244,42 @@ public class TrafficMap {
         scheduler.printCarStates();
     }
 
+    public Long scheduleTest1(int carFlowLimit) {
+        scheduler.reset();
+        priorityQueue.clear();
+        this.getCars().forEach(
+                (carId, car) -> priorityQueue.offer(car)
+        );
+        int time = 0;
+        int count = 0;
+
+        while (!priorityQueue.isEmpty()) {
+            time++;
+            count = 0;
+            while (true) {
+                Car car = priorityQueue.peek();
+                if (car == null || car.getPlanTime() > time || count >= carFlowLimit)
+                    break;
+
+                GraphPath path = shortestDistancePath(graph, car.getFrom(), car.getTo());
+                setCarPath(car, path);
+                if(car.getId() == 10020)
+                    System.out.println(car.getPath());
+
+                car.setStartTime(time).setState(CarState.IN_GARAGE);
+                scheduler.addToGarage(car);
+                priorityQueue.remove(car);
+                count++;
+            }
+            if (!scheduler.step())
+                return -1L;
+        }
+
+        if (!scheduler.stepUntilFinish(getCars().size()))
+            return -1L;
+        scheduler.printCarStates();
+        return scheduler.getSystemScheduleTime();
+    }
 
     public Long scheduleTest(int carFlowLimit) {
         scheduler.reset();

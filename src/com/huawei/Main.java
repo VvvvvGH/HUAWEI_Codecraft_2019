@@ -1,9 +1,20 @@
 package com.huawei;
 
+import io.jenetics.*;
+import io.jenetics.engine.Codecs;
+import io.jenetics.engine.Engine;
+import io.jenetics.engine.EvolutionStatistics;
+import io.jenetics.util.DoubleRange;
 import org.apache.log4j.Logger;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
+
+import static io.jenetics.engine.EvolutionResult.toBestPhenotype;
+import static io.jenetics.engine.Limits.bySteadyFitness;
 
 public class Main {
     private static final Logger logger = Logger.getLogger(Main.class);
@@ -94,59 +105,26 @@ public class Main {
         );
 
 
-        //运行规划
-        trafficMap.initGraphEdge();
-        trafficMap.pathClassification();
-//
-//
-        trafficMap.preScheduleDirection(10);
-        trafficMap.preScheduleDirection(10);
-        trafficMap.preScheduleDirection(10);
-        trafficMap.preScheduleDirection(10);
+        final Engine<DoubleGene, Double> engine = Engine
+                .builder(Main::scheduleTime, Codecs.ofVector(DoubleRange.of(1, 100), roads.size()))
+                .executor(Executors.newSingleThreadExecutor())
+                .optimize(Optimize.MINIMUM)
+                .maximalPhenotypeAge(11)
+                .populationSize(5)
+                .alterers(new SwapMutator<>(0.1), new UniformCrossover<>(0.4))
+                .build();
 
-//        trafficMap.preScheduleDirection(15);
-//        trafficMap.preScheduleDirection(15);
-//        trafficMap.preScheduleDirection(15);
-//        trafficMap.preScheduleDirection(15);
-//
-//        trafficMap.preScheduleDirection(15);
-//        trafficMap.preScheduleDirection(15);
-//        trafficMap.preScheduleDirection(15);
-//        trafficMap.preScheduleDirection(15);
-//
-//        trafficMap.preScheduleDirection(15);
-//        trafficMap.preScheduleDirection(15);
-//        trafficMap.preScheduleDirection(15);
-//        trafficMap.preScheduleDirection(15);
+        final EvolutionStatistics<Double,?> statistics = EvolutionStatistics.ofNumber();
 
-//
-//        long minTime = 9999L;
+        final Phenotype<DoubleGene,Double> best = engine.stream()
+                .limit(bySteadyFitness(5))
+                .limit(100)
+                .peek(statistics)
+                .collect(toBestPhenotype());
 
-//
-        Car  car1 = trafficMap.getCar(10000);
-        if(car1.getFrom()==18&&car1.getTo()==50) {
-            System.out.println("Map 1");
-            bestVal = 35;
-        }
-        else {
-            System.out.println("Map 2");
-            bestVal = 34;
-        }
-//
-//
 
-//        for (int i = bestVal; i < bestVal + 30; i++) {
-//            System.out.println("Trying "+i);
-//            long result = trafficMap.scheduleTest(i);
-//            if (minTime > result && result != -1) {
-//                minTime = result;
-//                bestVal = i;
-//            }
-//        }
-//
-//        System.out.println(minTime);
-//        System.out.println(bestVal);
-        trafficMap.scheduleTest(bestVal);
+        System.out.println(statistics);
+        System.out.println(best);
         //打印结果
         trafficMap.getCars().forEach(
                 (carId, car) -> {
@@ -162,5 +140,10 @@ public class Main {
         logger.info("End...");
         long endTime = System.currentTimeMillis();
         System.out.println("Main程序运行时间：" + (endTime - startTime) + "ms");
+    }
+    private static double scheduleTime(final double[] weights) {
+        trafficMap.initGraphEdgeByWeight(weights);
+        trafficMap.scheduleTest1(25);
+        return scheduler.getScheduleTime();
     }
 }
