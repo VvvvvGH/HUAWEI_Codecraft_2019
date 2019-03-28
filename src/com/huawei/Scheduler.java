@@ -1,9 +1,7 @@
 package com.huawei;
 
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.FileWriter;
-import java.io.IOException;
 import java.util.*;
 
 public class Scheduler {
@@ -12,6 +10,8 @@ public class Scheduler {
     private TreeMap<Integer, Road> roadMap = new TreeMap<>();
     private TreeMap<Integer, Car> carMap = new TreeMap<>();
     private ArrayList<Car> garage = new ArrayList<>();
+
+    private HashMap<String, Object> stateMap = new HashMap<>();
 
     // 基于统计的死锁检测，　若系统一段时间内状态没有发生变化，则认为是死锁
     public static boolean carStateChanged = false;
@@ -124,7 +124,6 @@ public class Scheduler {
         for (Road road : roadMap.values()) {
 
             road.moveCarsOnRoad();
-            // FIXME: Waiting queue
             if (road.isBidirectional()) {
                 road.offerWaitingQueue(road.getStart());
                 road.offerWaitingQueue(road.getEnd());
@@ -341,4 +340,76 @@ public class Scheduler {
 
         return builder.toString();
     }
+
+    public void saveSchedulerState() {
+        ArrayList<Car.CarStates> carStates = new ArrayList<>();
+
+        carMap.values().forEach(car ->
+                carStates.add(car.dumpStates())
+        );
+
+        stateMap.put("carState", carStates);
+
+        ArrayList<Road.RoadStates> roadStates = new ArrayList<>();
+
+        roadMap.values().forEach(road ->
+                roadStates.add(road.dumpStates())
+        );
+
+        stateMap.put("roadState", roadStates);
+
+
+        ArrayList<Car> garageToSave = new ArrayList<>();
+        garageToSave.addAll(garage);
+
+        stateMap.put("garage", garageToSave);
+
+        stateMap.put("totalScheduleTime", totalScheduleTime);
+        stateMap.put("totalActualScheduleTime", totalActualScheduleTime);
+        stateMap.put("systemScheduleTime", systemScheduleTime);
+        stateMap.put("carStateChanged", carStateChanged);
+        stateMap.put("deadLockCounter", deadLockCounter);
+
+
+        stateMap.put("CarState.WAIT", carStateCounter.get(CarState.WAIT));
+        stateMap.put("CarState.IN_GARAGE", carStateCounter.get(CarState.IN_GARAGE));
+        stateMap.put("CarState.OFF_ROAD", carStateCounter.get(CarState.OFF_ROAD));
+        stateMap.put("CarState.END", carStateCounter.get(CarState.END));
+
+    }
+
+    public void restoreSchedulerState() {
+
+        ArrayList<Car.CarStates> carStates = (ArrayList<Car.CarStates>) stateMap.get("carState");
+
+        carStates.forEach(carState -> {
+            carMap.get(carState.getId()).restoreStates(carState);
+        });
+
+        ArrayList<Road.RoadStates> roadStates = (ArrayList<Road.RoadStates>) stateMap.get("roadState");
+
+        roadStates.forEach(roadState -> {
+            roadMap.get(roadState.getRoadId()).restoreStates(roadState);
+        });
+
+        garage = (ArrayList<Car>) stateMap.get("garage");
+        // 对车库内的车按ID进行排序
+        Collections.sort(garage, Car.idComparator);
+
+
+        totalScheduleTime = (Long) stateMap.get("totalScheduleTime");
+        totalActualScheduleTime = (Long) stateMap.get("totalActualScheduleTime");
+        systemScheduleTime = (Long) stateMap.get("systemScheduleTime");
+        carStateChanged = (boolean) stateMap.get("carStateChanged");
+        deadLockCounter = (int) stateMap.get("deadLockCounter");
+
+
+        carStateCounter.put(CarState.WAIT, (Integer) stateMap.get("CarState.WAIT"));
+        carStateCounter.put(CarState.IN_GARAGE, (Integer) stateMap.get("CarState.IN_GARAGE"));
+        carStateCounter.put(CarState.OFF_ROAD, (Integer) stateMap.get("CarState.OFF_ROAD"));
+        carStateCounter.put(CarState.END, (Integer) stateMap.get("CarState.WAIT"));
+
+    }
+
+
 }

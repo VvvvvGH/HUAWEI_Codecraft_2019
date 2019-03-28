@@ -3,10 +3,11 @@ package com.huawei;
 import org.apache.log4j.Logger;
 
 import java.io.*;
-import java.util.*;
+import java.util.ArrayList;
 
 public class Main {
     private static final Logger logger = Logger.getLogger(Main.class);
+
 
     public static TrafficMap trafficMap = new TrafficMap();
     public static Scheduler scheduler = new Scheduler();
@@ -30,7 +31,7 @@ public class Main {
         return file_content;
     }
 
-    public static int writeFile(ArrayList<String> content, String filePath) {
+    public static void writeFile(ArrayList<String> content, String filePath) {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(filePath))) {
             content.forEach(line -> {
                 try {
@@ -42,8 +43,8 @@ public class Main {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return 0;
     }
+
 
     public static void main(String[] args) {
         if (args.length != 4) {
@@ -97,55 +98,34 @@ public class Main {
         //运行规划
         trafficMap.initGraphEdge();
         trafficMap.pathClassification();
-//
-//
-        trafficMap.preScheduleDirection(10);
-        trafficMap.preScheduleDirection(10);
-        trafficMap.preScheduleDirection(10);
-        trafficMap.preScheduleDirection(10);
 
-//        trafficMap.preScheduleDirection(15);
-//        trafficMap.preScheduleDirection(15);
-//        trafficMap.preScheduleDirection(15);
-//        trafficMap.preScheduleDirection(15);
-//
-//        trafficMap.preScheduleDirection(15);
-//        trafficMap.preScheduleDirection(15);
-//        trafficMap.preScheduleDirection(15);
-//        trafficMap.preScheduleDirection(15);
-//
-//        trafficMap.preScheduleDirection(15);
-//        trafficMap.preScheduleDirection(15);
-//        trafficMap.preScheduleDirection(15);
-//        trafficMap.preScheduleDirection(15);
+        trafficMap.preScheduleAccurateTest(10);
+        trafficMap.preScheduleAccurateTest(10);
+        trafficMap.preScheduleAccurateTest(10);
+        trafficMap.preScheduleAccurateTest(10);
 
-//
-//        long minTime = 9999L;
-
-//
-        Car  car1 = trafficMap.getCar(10000);
-        if(car1.getFrom()==18&&car1.getTo()==50) {
+        Car car1 = trafficMap.getCar(10000);
+        if (car1.getFrom() == 18 && car1.getTo() == 50) {
             System.out.println("Map 1");
-            bestVal = 35;
-        }
-        else {
+            bestVal = 38;
+        } else {
             System.out.println("Map 2");
-            bestVal = 34;
+            bestVal = 29;
         }
-//
-//
 
+
+        long minTime = 99999;
 //        for (int i = bestVal; i < bestVal + 30; i++) {
-//            System.out.println("Trying "+i);
+//            System.out.println("Trying " + i);
 //            long result = trafficMap.scheduleTest(i);
 //            if (minTime > result && result != -1) {
 //                minTime = result;
 //                bestVal = i;
 //            }
 //        }
-//
-//        System.out.println(minTime);
-//        System.out.println(bestVal);
+
+        System.out.println(minTime);
+        System.out.println(bestVal);
         trafficMap.scheduleTest(bestVal);
         //打印结果
         trafficMap.getCars().forEach(

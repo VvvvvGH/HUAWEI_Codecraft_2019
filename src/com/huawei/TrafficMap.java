@@ -2,8 +2,6 @@ package com.huawei;
 
 import org.jgrapht.Graph;
 import org.jgrapht.GraphPath;
-import org.jgrapht.alg.interfaces.AStarAdmissibleHeuristic;
-import org.jgrapht.alg.shortestpath.AStarShortestPath;
 import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
 import org.jgrapht.graph.SimpleDirectedWeightedGraph;
 
@@ -17,25 +15,12 @@ public class TrafficMap {
     private Graph<CrossRoads, RoadEdge> graph =
             new SimpleDirectedWeightedGraph<>(RoadEdge.class);
 
-
-    private AStarAdmissibleHeuristic heuristic = new AStarAdmissibleHeuristic<CrossRoads>() {
-        @Override
-        public double getCostEstimate(CrossRoads from, CrossRoads to) {
-            GraphPath path = dijkstraShortestPath.getPath(from, to);
-            double cost = path.getWeight();
-            return cost;
-        }
-    };
-
     private final int DIRECTION = 1;
     // Direction = 1 north south
     // Direction = 2 east west
     // Direction = 3 both
 
-    AStarShortestPath aStarShortestPath = new AStarShortestPath(graph, heuristic);
-
     DijkstraShortestPath dijkstraShortestPath = new DijkstraShortestPath(graph);
-
 
     private PriorityQueue<Car> priorityQueue = new PriorityQueue<>();
     private ArrayList<Car> carOrderByStartList = new ArrayList<>();
@@ -101,81 +86,12 @@ public class TrafficMap {
     }
 
 
-//    public void initGraphByDistanceAndWidth() {
-//        crossMap.forEach((cross, crossObj) -> graph.addVertex(crossObj));
-//        roads.forEach((roadId, road) -> {
-//            CrossRoads from = crossMap.get(road.getStart());
-//            CrossRoads to = crossMap.get(road.getEnd());
-//            graph.addEdge(from, to,road);
-//            graph.setEdgeWeight(edge, road.getLen() / (road.getNumOfLanes() * 1.0));
-//            if (road.isBidirectional()) {
-//                Road opposeEdge = graph.addEdge(to, from);
-//                graph.setEdgeWeight(opposeEdge, road.getLen() / (road.getNumOfLanes() * 1.0));
-//            }
-//        });
-//    }
-
-//    public void initGraphCombined() {
-//        crossMap.forEach((cross, crossObj) -> graph.addVertex(crossObj));
-//
-//        ArrayList<Road> roadArrayList = new ArrayList<>();
-//        roadArrayList.addAll(roads.values());
-//
-//        // Descending
-//        roadArrayList.sort(Road.roadCompareByLength);
-//        int max_len = roadArrayList.get(0).getLen();
-//
-//        // Decending
-//        roadArrayList.sort(Road.roadCompareBySpeed);
-//        int max_speed = roadArrayList.get(0).getTopSpeed();
-//
-//        // Decending
-//        roadArrayList.sort(Road.roadCompareBySpeed);
-//        int max_width = roadArrayList.get(0).getNumOfLanes();
-//
-//        roads.forEach((roadId, road) -> {
-//            double weight = (max_len / (road.getLen() * 1.0)) * ((road.getTopSpeed() * 1.0) / road.getTopSpeed());
-//            CrossRoads from = crossMap.get(road.getStart());
-//            CrossRoads to = crossMap.get(road.getEnd());
-//            DefaultWeightedEdge edge = graph.addEdge(from, to);
-//            graph.setEdgeWeight(edge, weight);
-//            if (road.isBidirectional()) {
-//                DefaultWeightedEdge opposeEdge = graph.addEdge(to, from);
-//                graph.setEdgeWeight(opposeEdge, weight);
-//            }
-//        });
-//    }
-//
-//
-//    public void initGraphByTime() {
-//        crossMap.forEach((cross, crossObj) -> graph.addVertex(crossObj));
-//        roads.forEach((roadId, road) -> {
-//            CrossRoads from = crossMap.get(road.getStart());
-//            CrossRoads to = crossMap.get(road.getEnd());
-//            DefaultWeightedEdge edge = graph.addEdge(from, to);
-//            graph.setEdgeWeight(edge, road.getLen() / (road.getTopSpeed() * 1.0));
-//            if (road.isBidirectional()) {
-//                DefaultWeightedEdge opposeEdge = graph.addEdge(to, from);
-//                graph.setEdgeWeight(opposeEdge, road.getLen() / (road.getTopSpeed() * 1.0));
-//            }
-//        });
-//    }
-
     public GraphPath shortestDistancePath(Graph graphToCompute, int from, int to) {
         return DijkstraShortestPath.findPathBetween(graphToCompute, crossMap.get(from), crossMap.get(to));
     }
 
-    public GraphPath aStarShortestPath(Graph graphToCompute, int from, int to) {
-        return aStarShortestPath.getPath(crossMap.get(from), crossMap.get(to));
-    }
-
-
-    public double costEstimationByDistance(CrossRoads from, CrossRoads to) {
-        return dijkstraShortestPath.getPath(from, to).getWeight();
-    }
 
     public void setCarPath(Car car, GraphPath path) {
-
         // Clean original path
         car.getPath().clear();
         //Find the road between two crossroads
@@ -184,117 +100,112 @@ public class TrafficMap {
         });
     }
 
-    public void schedule() {
-        initGraphEdge();
 
-        this.getCars().forEach(
-                (carId, car) -> priorityQueue.offer(car)
-        );
-        int time = 0;
-        int count = 0;
-        int carFlowLimit = 30;
-
-        while (!priorityQueue.isEmpty()) {
-            time++;
-            count = 0;
-            while (true) {
-                Car car = priorityQueue.peek();
-                if (car == null || car.getPlanTime() > time || count >= carFlowLimit)
-                    break;
-
-                car.setStartTime(time);
-                GraphPath path = shortestDistancePath(graph, car.getFrom(), car.getTo());
-                setCarPath(car, path);
-
-                scheduler.addToGarage(car);
-                priorityQueue.remove(car);
-                count++;
-            }
-            scheduler.step();
-        }
-        scheduler.stepUntilFinish(getCars().size());
-        scheduler.printCarStates();
-    }
-
-
-    public Long scheduleTest(int carFlowLimit) {
+    public Long scheduleOneByOne(int carFlowLimit) {
+        // 重置
         scheduler.reset();
+        // 更新地图权重
         updateGraphEdge();
 
-//        ConcurrentLinkedQueue<Car> carQueue = new ConcurrentLinkedQueue<>();
-//        carQueue.addAll(carOrderByStartList);
-
-//        priorityQueue.clear();
-//        this.getCars().forEach(
-//                (carId, car) -> priorityQueue.offer(car)
-//        );
-
-//        PriorityQueue<Car> carQueue = priorityQueue;
-
+        // 记录车辆计划时间，　包括推后出发时间
         HashMap<Integer, Integer> carPlanTime = new HashMap<>();
-
 
         cars.forEach((carId, car) -> {
             carPlanTime.put(carId, car.getPlanTime());
         });
 
+        //  出发时间
         int time = 0;
-        int count = 0;
-        int speedGap = 2;
 
+        // 总发车数目
+        int carSent = 0;
+
+        //　根据车辆大致方向分类
         HashMap<Integer, PriorityQueue<Car>> carDirection = directionClassification(DIRECTION);
-
         for (int i = 0; i <= 1; i++) {
-
+            // 获取一个分类
             PriorityQueue<Car> carQueue = carDirection.get(i);
 
+            //　暂停两个时间片，让反向车流先走再发车
             time += 2;
 
             while (!carQueue.isEmpty()) {
                 time++;
-                count = 0;
-//                carFlowLimit = carFlowControl(carQueue);
 
-                while (true) {
 
-                    Car car = carQueue.peek();
-                    if (car == null || carPlanTime.get(car.getId()) > time || count >= carFlowLimit)
-                        break;
+                // 保存状态
+                scheduler.saveSchedulerState();
+                // 临时存储车
+                ArrayList<Car> tempGarage = new ArrayList<>();
+                // 车流限制
+                int carFlow = carFlowLimit;
+                //　车流计数器
+                int count = 0;
+                //死锁
+                boolean deadLock = false;
 
-//                    if (car.getTopSpeed() != speedGap) {
-//                        speedGap = car.getTopSpeed();
-//                        carFlowLimit = 5;
-//                        System.out.println(carQueue.size());
-//                        System.out.println("Speed gap detected!");
-//                    }
 
-                    GraphPath path = shortestDistancePath(graph, car.getFrom(), car.getTo());
-                    setCarPath(car, path);
 
-                    boolean hasBusyPath = false;
+                for (int carNum = 0; carNum < 100; carNum++) {
 
-                    for (int roadId : car.getPath()) {
-                        if (roads.get(roadId).calculateLoad() > 0.90) {
-                            hasBusyPath = true;
+                    count = 0;
+
+                    if (!deadLock)
+                        carFlowLimit = carFlow + carNum;
+
+                    while (true) {
+                        Car car = carQueue.peek();
+                        if (car == null || carPlanTime.get(car.getId()) > time || carFlow <= count)
+                            break;
+                        GraphPath path = shortestDistancePath(graph, car.getFrom(), car.getTo());
+                        setCarPath(car, path);
+
+                        boolean hasBusyPath = false;
+
+                        for (int roadId : car.getPath()) {
+                            if (roads.get(roadId).calculateLoad() > 0.90) {
+                                hasBusyPath = true;
+                            }
                         }
-                    }
-                    if (hasBusyPath) {
-                        carPlanTime.put(car.getId(), carPlanTime.get(car.getId()) + 1);
-                        continue;
+                        if (hasBusyPath) {
+                            carPlanTime.put(car.getId(), carPlanTime.get(car.getId()) + 1);
+                            continue;
+                        }
+
+                        car.setStartTime(time).setState(CarState.IN_GARAGE);
+                        scheduler.addToGarage(car);
+
+                        tempGarage.add(car);
+                        carQueue.remove(car);
+                        count++;
+                        carSent++;
                     }
 
-                    car.setStartTime(time).setState(CarState.IN_GARAGE);
-                    scheduler.addToGarage(car);
-                    carQueue.remove(car);
-                    count++;
+                    if(deadLock){
+                        break;
+                    }
+
+                    if (!scheduler.stepUntilFinish(carSent)) {
+                        // 死锁发生
+                        deadLock = true;
+                        carFlowLimit--;
+                    }
+
+                    scheduler.restoreSchedulerState();
+                    carQueue.addAll(tempGarage);
+                    tempGarage.clear();
+
 
                 }
-                if (!scheduler.step())
-                    return -1L;
+//                scheduler.saveSchedulerState();
+//
+//                if (!scheduler.step()) {
+//                    scheduler.reset();
+//                    scheduler.restoreSchedulerState();
+//                }
                 updateGraphEdge();
             }
         }
-
 
         if (!scheduler.stepUntilFinish(getCars().size()))
             return -1L;
@@ -302,21 +213,85 @@ public class TrafficMap {
         return scheduler.getSystemScheduleTime();
     }
 
-    public int carFlowControl(Queue carQueue) {
-        int carFlowLimit = Main.bestVal;
-//        if (carQueue.size() > 9000)
-//            carFlowLimit = 25;
-//        else if (carQueue.size() > 5000 && carQueue.size() < 9000)
-//            carFlowLimit = 21;
-//        else if (carQueue.size() < 5000)
-//            carFlowLimit = 23;
-//
-//        if (carQueue.size() < 500) {
-//            initGraphEdgeBySpeed();
-//        }
-        return carFlowLimit;
-    }
 
+    public Long scheduleTest(int carFlowLimit) {
+        // 重置
+        scheduler.reset();
+        // 更新地图权重
+        updateGraphEdge();
+
+        //  出发时间
+        int time = 0;
+        //　车流计数器
+        int count = 0;
+
+        ArrayList<Car> carNotSent = new ArrayList<>();
+
+        //　根据车辆大致方向分类
+        HashMap<Integer, PriorityQueue<Car>> carDirection = directionClassification(DIRECTION);
+        for (int i = 0; i <= 1; i++) {
+            // 获取一个分类
+            PriorityQueue<Car> carQueue = carDirection.get(i);
+
+            //　暂停两个时间片，让反向车流先走再发车
+            time += 2;
+
+            while (!carQueue.isEmpty()) {
+                time++;
+                count = 0;
+
+                carNotSent.clear();
+
+                while (true) {
+
+                    Car car = carQueue.peek();
+                    if (car == null || count >= carFlowLimit)
+                        break;
+
+                    if(car.getPlanTime() > time ) {
+                        carNotSent.add(car);
+                        carQueue.remove(car);
+                        continue;
+                    }
+
+                    GraphPath path = shortestDistancePath(graph, car.getFrom(), car.getTo());
+                    setCarPath(car, path);
+
+                    boolean hasBusyPath = false;
+
+                    for (Object edge:path.getEdgeList()) {
+                        if(((RoadEdge)edge).calculateLoad()>0.90) {
+                            carNotSent.add(car);
+                            carQueue.remove(car);
+                            hasBusyPath = true;
+                            break;
+                        }
+                    }
+
+                    if (hasBusyPath) {
+                        continue;
+                    }
+
+                    car.setStartTime(time).setState(CarState.IN_GARAGE);
+                    scheduler.addToGarage(car);
+                    carQueue.remove(car);
+                    count++;
+                }
+
+                carQueue.addAll(carNotSent);
+                if (!scheduler.step()) {
+                    return -1L;
+                }
+
+                updateGraphEdge();
+            }
+        }
+
+        if (!scheduler.stepUntilFinish(getCars().size()))
+            return -1L;
+        scheduler.printCarStates();
+        return scheduler.getSystemScheduleTime();
+    }
 
     public void pathClassification() {
         priorityQueue.clear();
@@ -383,20 +358,20 @@ public class TrafficMap {
             double directionSum = 0;
             for (RoadEdge roadEdge : path.getEdgeList()) {
                 CrossRoads.RoadPosition roadPosition = roadEdge.getSource().getRoadDirection().get(roadEdge.road.getId());
-                if (roadPosition == CrossRoads.RoadPosition.NORTH&&direction==1||direction==3) {
+                if (roadPosition == CrossRoads.RoadPosition.NORTH && direction == 1 || direction == 3) {
                     directionSum += roadEdge.road.getLen();
-                } else if (roadPosition == CrossRoads.RoadPosition.SOUTH&&direction==1||direction==3)
+                } else if (roadPosition == CrossRoads.RoadPosition.SOUTH && direction == 1 || direction == 3)
                     directionSum -= roadEdge.road.getLen();
-                else if (roadPosition == CrossRoads.RoadPosition.EAST&&direction==2||direction==3) {
+                else if (roadPosition == CrossRoads.RoadPosition.EAST && direction == 2 || direction == 3) {
                     directionSum += roadEdge.road.getLen();
-                } else if (roadPosition == CrossRoads.RoadPosition.WEST&&direction==2||direction==3)
+                } else if (roadPosition == CrossRoads.RoadPosition.WEST && direction == 2 || direction == 3)
                     directionSum -= roadEdge.road.getLen();
             }
             if (directionSum <= 0)
-                //South
+                // D1
                 directionMap.get(1).offer(car);
             else
-                //Notrh
+                // D2
                 directionMap.get(0).offer(car);
 
         }
@@ -484,9 +459,6 @@ public class TrafficMap {
     public long preScheduleDirection(int max_car_limit) {
         scheduler.reset();
 
-//        ConcurrentLinkedQueue<Car> carQueue = new ConcurrentLinkedQueue<>();
-//        carQueue.addAll(carOrderByStartList);
-//
 
         HashMap<Integer, PriorityQueue<Car>> carDirection = directionClassification(DIRECTION);
 
@@ -558,8 +530,79 @@ public class TrafficMap {
         return Scheduler.systemScheduleTime;
     }
 
-    public void exportGraphWeight() {
+    public long preScheduleAccurateTest(int carFlowLimit) {
+        scheduler.reset();
 
+        HashMap<Integer, PriorityQueue<Car>> carDirection = directionClassification(DIRECTION);
+
+
+        //Busy path recorder
+        ArrayList<RoadEdge> busyEdges = new ArrayList<>();
+
+        //  出发时间
+        int time = 0;
+        //　车流计数器
+        int count = 0;
+
+        ArrayList<Car> carNotSent = new ArrayList<>();
+
+        for (int i = 0; i <= 1; i++) {
+            // 获取一个分类
+            PriorityQueue<Car> carQueue = carDirection.get(i);
+
+            //　暂停两个时间片，让反向车流先走再发车
+            time += 2;
+
+            while (!carQueue.isEmpty()) {
+                time++;
+                count = 0;
+                carNotSent.clear();
+
+                while (true) {
+
+                    Car car = carQueue.peek();
+                    if (car == null || count >= carFlowLimit)
+                        break;
+
+                    if(car.getPlanTime() > time ) {
+                        carNotSent.add(car);
+                        carQueue.remove(car);
+                        continue;
+                    }
+
+                    GraphPath path = shortestDistancePath(graph, car.getFrom(), car.getTo());
+                    setCarPath(car, path);
+
+                    for (Object edge:path.getEdgeList()) {
+                        if(((RoadEdge)edge).calculateLoad()>0.50) {
+                            busyEdges.add(((RoadEdge)edge));
+                            break;
+                        }
+                    }
+
+
+                    car.setStartTime(time).setState(CarState.IN_GARAGE);
+                    scheduler.addToGarage(car);
+                    carQueue.remove(car);
+                    count++;
+                }
+
+
+                carQueue.addAll(carNotSent);
+                if (!scheduler.step()) {
+                    return -1L;
+                }
+            }
+        }
+        if (!scheduler.stepUntilFinish(getCars().size()))
+            return -1;
+        scheduler.printCarStates();
+
+        for (RoadEdge edge:busyEdges) {
+            graph.setEdgeWeight(edge,edge.road.getLen()*1.5);
+        }
+
+        return Scheduler.systemScheduleTime;
     }
 
 

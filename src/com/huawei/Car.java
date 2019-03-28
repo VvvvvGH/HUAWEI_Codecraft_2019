@@ -11,7 +11,6 @@ public class Car implements Comparable<Car> {
     private int to;
     private int topSpeed;
     private int planTime;
-
     private ArrayList<Integer> path = new ArrayList<>();
 
     private int currentSpeed = 0;
@@ -73,22 +72,11 @@ public class Car implements Comparable<Car> {
         return stringBuilder.toString();
     }
 
-//
-//    public int compareTo(Car car) {
-//        // 根据速度排序
-//        if (car.getPlanTime() / (car.getTopSpeed() * 1.0) > getPlanTime() / (getTopSpeed() * 1.0))
-//            return -1;
-//        else if (car.getPlanTime() / (car.getTopSpeed() * 1.0) < getPlanTime() / (getTopSpeed() * 1.0))
-//            return 1;
-//        else
-//            return 0;
-//    }
-
     public int compareTo(Car car) {
         // 根据速度排序
-        if (getTopSpeed()>car.getTopSpeed())
+        if (getTopSpeed() > car.getTopSpeed())
             return -1;
-        else if (getTopSpeed()==car.getTopSpeed())
+        else if (getTopSpeed() == car.getTopSpeed())
             return 0;
         else
             return 1;
@@ -253,5 +241,114 @@ public class Car implements Comparable<Car> {
 
         this.state = CarState.IN_GARAGE;
         this.position = -1;
+    }
+
+    public CarStates dumpStates() {
+        ArrayList<Integer> carPath = new ArrayList<>(path);
+        return new CarStates(getCurrentSpeed(), getStartTime(), getEndTime(), getLaneId(), getState(), getPosition(), getId(), carPath);
+    }
+
+    public void restoreStates(CarStates carStates) {
+        this.currentSpeed = carStates.getCurrentSpeed();
+        this.startTime = carStates.getStartTime();
+        this.endTime = carStates.getEndTime();
+        this.laneId = carStates.getLaneId();
+        this.state = carStates.getCarState();
+        this.position = carStates.getPosition();
+        this.path = carStates.getPath();
+    }
+
+    public class CarStates {
+        int currentSpeed;
+        long startTime;
+        long endTime;
+        int laneId;
+        CarState carState;
+        int position;
+        int id;
+        ArrayList<Integer> path;
+
+        public CarStates(int currentSpeed, long startTime, long endTime, int laneId, CarState carState, int position, int id, ArrayList<Integer> path) {
+            this.currentSpeed = currentSpeed;
+            this.startTime = startTime;
+            this.endTime = endTime;
+            this.laneId = laneId;
+            this.carState = carState;
+            this.position = position;
+            this.id = id;
+            this.path = path;
+        }
+
+        public int getCurrentSpeed() {
+            return currentSpeed;
+        }
+
+        public CarStates setCurrentSpeed(int currentSpeed) {
+            this.currentSpeed = currentSpeed;
+            return this;
+        }
+
+        public long getStartTime() {
+            return startTime;
+        }
+
+        public CarStates setStartTime(long startTime) {
+            this.startTime = startTime;
+            return this;
+        }
+
+        public long getEndTime() {
+            return endTime;
+        }
+
+        public CarStates setEndTime(long endTime) {
+            this.endTime = endTime;
+            return this;
+        }
+
+        public int getLaneId() {
+            return laneId;
+        }
+
+        public CarStates setLaneId(int laneId) {
+            this.laneId = laneId;
+            return this;
+        }
+
+        public CarState getCarState() {
+            return carState;
+        }
+
+        public CarStates setCarState(CarState carState) {
+            this.carState = carState;
+            return this;
+        }
+
+        public int getPosition() {
+            return position;
+        }
+
+        public CarStates setPosition(int position) {
+            this.position = position;
+            return this;
+        }
+
+        public int getId() {
+            return id;
+        }
+
+        public CarStates setId(int id) {
+            this.id = id;
+            return this;
+        }
+
+        public ArrayList<Integer> getPath() {
+            return path;
+        }
+
+        public CarStates setPath(ArrayList<Integer> path) {
+            this.path = path;
+            return this;
+        }
     }
 }

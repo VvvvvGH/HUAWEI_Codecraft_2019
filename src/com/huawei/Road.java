@@ -1,6 +1,7 @@
 package com.huawei;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class Road {
     private int id;
@@ -394,7 +395,7 @@ public class Road {
         }
     }
 
-    public Lane laneContainCar(Car car) {
+    public Lane laneContainsCar(Car car) {
         Lane laneContainCar = null;
         for (Lane l : getLaneList()) {
             if (l.getCarMap().containsValue(car)) {
@@ -403,9 +404,74 @@ public class Road {
             }
         }
         if (laneContainCar == null) {
-            System.err.println("Road#laneContainCar#null");
+            System.err.println("Road#laneContainsCar#null");
         }
         return laneContainCar;
+    }
+
+    public RoadStates dumpStates() {
+        ArrayList<Lane> lanes = getLaneList();
+        HashMap<Integer, ArrayList<Integer>> carsMap = new HashMap<>();
+        for (int i = 0; i < lanes.size(); i++) {
+            carsMap.put(i, new ArrayList<Integer>(lanes.get(i).getCarMap().values().stream().map(Car::getId).collect(Collectors.toList())));
+        }
+
+        return new RoadStates(getId(), carsMap);
+    }
+
+    public void restoreStates(RoadStates roadStates) {
+        if (roadStates.getRoadId() != getId())
+            System.err.println("Id not match !!! #restoreStates");
+        initLaneList();
+        initWaitingQueue();
+
+        ArrayList<Lane> lanes = getLaneList();
+
+        for (int i = 0; i < lanes.size(); i++) {
+
+            for (int carId : roadStates.getCarsMap().get(i)) {
+                Car car = Main.scheduler.getCar(carId);
+                lanes.get(i).putCar(car, car.getPosition());
+            }
+
+        }
+        // Restore Waiting queue
+        if (
+                isBidirectional()) {
+            offerWaitingQueue(getStart());
+            offerWaitingQueue(getEnd());
+        } else
+
+            offerWaitingQueue(getEnd());
+
+    }
+
+    public class RoadStates {
+        int roadId;
+        HashMap<Integer, ArrayList<Integer>> carsMap;
+
+        public RoadStates(int roadId, HashMap<Integer, ArrayList<Integer>> carsMap) {
+            this.roadId = roadId;
+            this.carsMap = carsMap;
+        }
+
+        public int getRoadId() {
+            return roadId;
+        }
+
+        public RoadStates setRoadId(int roadId) {
+            this.roadId = roadId;
+            return this;
+        }
+
+        public HashMap<Integer, ArrayList<Integer>> getCarsMap() {
+            return carsMap;
+        }
+
+        public RoadStates setCarsMap(HashMap<Integer, ArrayList<Integer>> carsMap) {
+            this.carsMap = carsMap;
+            return this;
+        }
     }
 
 }
