@@ -222,17 +222,8 @@ public class Road {
         if (waitingQueue == null)
             return;
 
-        Iterator<Car> it = waitingQueue.iterator();
-        while (it.hasNext()) {
-            Car car = it.next();
-            if (car.getState() != CarState.WAIT)
-                it.remove();
-        }
-        Car car;
-        if (waitingQueue.size() >= 2) {
-            car = waitingQueue.remove();
-            waitingQueue.add(car);
-        }
+        waitingQueue.clear();
+        offerWaitingQueue(crossRoadId);
 
 
     }
