@@ -6,3 +6,4 @@ main/java/com/huawei/TrafficMap.java
 main/java/com/huawei/Lane.java
 main/java/com/huawei/Scheduler.java
 main/java/com/huawei/CarState.java
+main/java/com/huawei/RoadEdge.java
