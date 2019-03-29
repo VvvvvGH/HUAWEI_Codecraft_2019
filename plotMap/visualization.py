@@ -350,10 +350,10 @@ class visualization(object):
 
 
 def main():
-    car_path = "/home/cheng/IdeaProjects/HWSC/SDK_java/bin/config/car.txt"
-    road_path = "/home/cheng/IdeaProjects/HWSC/SDK_java/bin/config/road.txt"
-    cross_path = "/home/cheng/IdeaProjects/HWSC/SDK_java/bin/config/cross.txt"
-    data_path = "/home/cheng/IdeaProjects/HWSC/SDK_java/bin/config/data.txt"
+    car_path = "./SDK_java/bin/config/car.txt"
+    road_path = "./SDK_java/bin/config/road.txt"
+    cross_path = "./SDK_java/bin/config/cross.txt"
+    data_path = "./SDK_java/bin/config/data.txt"
     # ************************************* M A I N *******************************************#
     # load .txt files
     carInfo = open(car_path, 'r').read().split('\n')[1:]

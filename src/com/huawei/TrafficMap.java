@@ -9,7 +9,6 @@ import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 
-
 public class TrafficMap {
     private Graph<CrossRoads, RoadEdge> graph =
             new SimpleDirectedWeightedGraph<>(RoadEdge.class);
@@ -151,7 +150,6 @@ public class TrafficMap {
                 boolean deadLock = false;
 
 
-
                 for (int carNum = 0; carNum < 100; carNum++) {
 
                     count = 0;
@@ -187,7 +185,7 @@ public class TrafficMap {
                         carSent++;
                     }
 
-                    if(deadLock){
+                    if (deadLock) {
                         break;
                     }
 
@@ -224,16 +222,6 @@ public class TrafficMap {
         scheduler.reset();
         updateGraphEdge();
 
-//        ConcurrentLinkedQueue<Car> carQueue = new ConcurrentLinkedQueue<>();
-//        carQueue.addAll(carOrderByStartList);
-
-//        priorityQueue.clear();
-//        this.getCars().forEach(
-//                (carId, car) -> priorityQueue.offer(car)
-//        );
-
-//        PriorityQueue<Car> carQueue = priorityQueue;
-
         HashMap<Integer, Integer> carPlanTime = new HashMap<>();
 
 
@@ -243,7 +231,6 @@ public class TrafficMap {
 
         int time = 0;
         int count = 0;
-        int speedGap = 2;
 
         HashMap<Integer, PriorityQueue<Car>> carDirection = directionClassification(DIRECTION);
 
@@ -256,35 +243,33 @@ public class TrafficMap {
             while (!carQueue.isEmpty()) {
                 time++;
                 count = 0;
-//                carFlowLimit = carFlowControl(carQueue);
 
                 while (true) {
-
                     Car car = carQueue.peek();
                     if (car == null || carPlanTime.get(car.getId()) > time || count >= carFlowLimit)
                         break;
-
-//                    if (car.getTopSpeed() != speedGap) {
-//                        speedGap = car.getTopSpeed();
-//                        carFlowLimit = 5;
-//                        System.out.println(carQueue.size());
-//                        System.out.println("Speed gap detected!");
-//                    }
 
                     GraphPath path = shortestDistancePath(graph, car.getFrom(), car.getTo());
                     setCarPath(car, path);
 
                     boolean hasBusyPath = false;
-
-                    for (int roadId : car.getPath()) {
-                        if (roads.get(roadId).calculateLoad() > 0.90) {
+                    for (Object edge : path.getEdgeList()) {
+                        if(((RoadEdge) edge).calculateLoad()>0.9) {
                             hasBusyPath = true;
+                            break;
                         }
                     }
                     if (hasBusyPath) {
                         carPlanTime.put(car.getId(), carPlanTime.get(car.getId()) + 1);
                         continue;
                     }
+//
+//                    for (int roadId : car.getPath()) {
+//                        if (roads.get(roadId).calculateLoad() > 0.90) {
+//                            hasBusyPath = true;
+//                        }
+//                    }
+
 
                     car.setStartTime(time).setState(CarState.IN_GARAGE);
                     scheduler.addToGarage(car);
@@ -296,6 +281,7 @@ public class TrafficMap {
                     return -1L;
                 updateGraphEdge();
             }
+
         }
 
 
@@ -576,7 +562,7 @@ public class TrafficMap {
                     if (car == null || count >= carFlowLimit)
                         break;
 
-                    if(car.getPlanTime() > time ) {
+                    if (car.getPlanTime() > time) {
                         carNotSent.add(car);
                         carQueue.remove(car);
                         continue;
@@ -585,9 +571,9 @@ public class TrafficMap {
                     GraphPath path = shortestDistancePath(graph, car.getFrom(), car.getTo());
                     setCarPath(car, path);
 
-                    for (Object edge:path.getEdgeList()) {
-                        if(((RoadEdge)edge).calculateLoad()>0.50) {
-                            busyEdges.add(((RoadEdge)edge));
+                    for (Object edge : path.getEdgeList()) {
+                        if (((RoadEdge) edge).calculateLoad() > 0.50) {
+                            busyEdges.add(((RoadEdge) edge));
                             break;
                         }
                     }
@@ -610,8 +596,8 @@ public class TrafficMap {
             return -1;
         scheduler.printCarStates();
 
-        for (RoadEdge edge:busyEdges) {
-            graph.setEdgeWeight(edge,edge.road.getLen()*1.5);
+        for (RoadEdge edge : busyEdges) {
+            graph.setEdgeWeight(edge, edge.road.getLen() * 1.5);
         }
 
         return Scheduler.systemScheduleTime;
