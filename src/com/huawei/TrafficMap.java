@@ -88,9 +88,22 @@ public class TrafficMap {
                 graph.addEdge(to, from, roadEdge1);
             }
             i++;
-            System.out.print(graph.getEdgeWeight(roadEdge)+"-");
         }
-        System.out.println();
+    }
+    public double[] getWeights(){
+        double[] weights = new double[roads.size()];
+        Iterator<Integer> it = roads.keySet().iterator();
+        int i=0;
+        while(it.hasNext()){
+            Integer roadId = it.next();
+            Road road = roads.get(roadId);
+            CrossRoads from = crossMap.get(road.getStart());
+            CrossRoads to = crossMap.get(road.getEnd());
+            RoadEdge edge = graph.getEdge(from,to);
+            weights[i] = graph.getEdgeWeight(edge);
+            i++;
+        }
+        return weights;
     }
 
     public void initGraphEdgeBySpeed() {
@@ -263,8 +276,6 @@ public class TrafficMap {
 
                 GraphPath path = shortestDistancePath(graph, car.getFrom(), car.getTo());
                 setCarPath(car, path);
-                if(car.getId() == 10020)
-                    System.out.println(car.getPath());
 
                 car.setStartTime(time).setState(CarState.IN_GARAGE);
                 scheduler.addToGarage(car);

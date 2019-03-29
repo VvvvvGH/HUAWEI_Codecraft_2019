@@ -1,10 +1,12 @@
 package com.huawei;
 
 import io.jenetics.*;
+import io.jenetics.engine.Codec;
 import io.jenetics.engine.Codecs;
 import io.jenetics.engine.Engine;
 import io.jenetics.engine.EvolutionStatistics;
 import io.jenetics.util.DoubleRange;
+import io.jenetics.util.ISeq;
 import org.apache.log4j.Logger;
 
 import java.io.*;
@@ -104,24 +106,35 @@ public class Main {
                 }
         );
 
-
+        trafficMap.initGraphEdge();
+        trafficMap.scheduleTest(20);
+        System.out.println(trafficMap.getWeights().length);
+        System.out.println(Arrays.toString(trafficMap.getWeights()));
+        double[] weights = trafficMap.getWeights();
+        DoubleRange[] ranges = new DoubleRange[weights.length];
+        for (int i=0;i<weights.length;i++){
+            ranges[i] = DoubleRange.of(weights[i]-2,weights[i]+2);
+        }
+        Codec<double[], DoubleGene> codec = Codecs.ofVector(ranges);
         final Engine<DoubleGene, Double> engine = Engine
-                .builder(Main::scheduleTime, Codecs.ofVector(DoubleRange.of(1, 100), roads.size()))
-                .executor(Executors.newSingleThreadExecutor())
+                //.builder(Main::scheduleTime, Codecs.ofVector(DoubleRange.of(1, 100), roads.size()))
+                .builder(Main::scheduleTime, codec)
+                .executor((Executor)Runnable::run)
+                //.survivorsSize()
+                //.selector()
                 .optimize(Optimize.MINIMUM)
-                .maximalPhenotypeAge(11)
+                .maximalPhenotypeAge(5)
                 .populationSize(5)
-                .alterers(new SwapMutator<>(0.1), new UniformCrossover<>(0.4))
+                .alterers(new SwapMutator<>(0.8), new UniformCrossover<>(0.4))
                 .build();
 
         final EvolutionStatistics<Double,?> statistics = EvolutionStatistics.ofNumber();
 
         final Phenotype<DoubleGene,Double> best = engine.stream()
-                .limit(bySteadyFitness(5))
+                .limit(bySteadyFitness(10))
                 .limit(100)
                 .peek(statistics)
                 .collect(toBestPhenotype());
-
 
         System.out.println(statistics);
         System.out.println(best);
@@ -142,8 +155,15 @@ public class Main {
         System.out.println("Main程序运行时间：" + (endTime - startTime) + "ms");
     }
     private static double scheduleTime(final double[] weights) {
+        System.out.print("[");
+        for(int i=0;i<weights.length;i++){
+            System.out.print(String.format("%.1f",weights[i])+",");
+        }
+        System.out.println();
         trafficMap.initGraphEdgeByWeight(weights);
-        trafficMap.scheduleTest1(25);
-        return scheduler.getScheduleTime();
+        trafficMap.scheduleTest(20);
+        if(scheduler.getSystemScheduleTime() == -1)
+            return 10000;
+        return scheduler.getSystemScheduleTime();
     }
 }
