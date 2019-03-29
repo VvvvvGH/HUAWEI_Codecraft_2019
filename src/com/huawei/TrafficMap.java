@@ -8,7 +8,6 @@ import org.jgrapht.graph.SimpleDirectedWeightedGraph;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import static com.huawei.Main.scheduler;
 
 
 public class TrafficMap {
@@ -19,6 +18,13 @@ public class TrafficMap {
     // Direction = 1 north south
     // Direction = 2 east west
     // Direction = 3 both
+
+
+    public TrafficMap(Scheduler scheduler) {
+        this.scheduler = scheduler;
+    }
+
+    private Scheduler scheduler;
 
     DijkstraShortestPath dijkstraShortestPath = new DijkstraShortestPath(graph);
 
@@ -215,60 +221,68 @@ public class TrafficMap {
 
 
     public Long scheduleTest(int carFlowLimit) {
-        // 重置
         scheduler.reset();
-        // 更新地图权重
         updateGraphEdge();
 
-        //  出发时间
+//        ConcurrentLinkedQueue<Car> carQueue = new ConcurrentLinkedQueue<>();
+//        carQueue.addAll(carOrderByStartList);
+
+//        priorityQueue.clear();
+//        this.getCars().forEach(
+//                (carId, car) -> priorityQueue.offer(car)
+//        );
+
+//        PriorityQueue<Car> carQueue = priorityQueue;
+
+        HashMap<Integer, Integer> carPlanTime = new HashMap<>();
+
+
+        cars.forEach((carId, car) -> {
+            carPlanTime.put(carId, car.getPlanTime());
+        });
+
         int time = 0;
-        //　车流计数器
         int count = 0;
+        int speedGap = 2;
 
-        ArrayList<Car> carNotSent = new ArrayList<>();
-
-        //　根据车辆大致方向分类
         HashMap<Integer, PriorityQueue<Car>> carDirection = directionClassification(DIRECTION);
+
         for (int i = 0; i <= 1; i++) {
-            // 获取一个分类
+
             PriorityQueue<Car> carQueue = carDirection.get(i);
 
-            //　暂停两个时间片，让反向车流先走再发车
             time += 2;
 
             while (!carQueue.isEmpty()) {
                 time++;
                 count = 0;
-
-                carNotSent.clear();
+//                carFlowLimit = carFlowControl(carQueue);
 
                 while (true) {
 
                     Car car = carQueue.peek();
-                    if (car == null || count >= carFlowLimit)
+                    if (car == null || carPlanTime.get(car.getId()) > time || count >= carFlowLimit)
                         break;
 
-                    if(car.getPlanTime() > time ) {
-                        carNotSent.add(car);
-                        carQueue.remove(car);
-                        continue;
-                    }
+//                    if (car.getTopSpeed() != speedGap) {
+//                        speedGap = car.getTopSpeed();
+//                        carFlowLimit = 5;
+//                        System.out.println(carQueue.size());
+//                        System.out.println("Speed gap detected!");
+//                    }
 
                     GraphPath path = shortestDistancePath(graph, car.getFrom(), car.getTo());
                     setCarPath(car, path);
 
                     boolean hasBusyPath = false;
 
-                    for (Object edge:path.getEdgeList()) {
-                        if(((RoadEdge)edge).calculateLoad()>0.90) {
-                            carNotSent.add(car);
-                            carQueue.remove(car);
+                    for (int roadId : car.getPath()) {
+                        if (roads.get(roadId).calculateLoad() > 0.90) {
                             hasBusyPath = true;
-                            break;
                         }
                     }
-
                     if (hasBusyPath) {
+                        carPlanTime.put(car.getId(), carPlanTime.get(car.getId()) + 1);
                         continue;
                     }
 
@@ -276,16 +290,14 @@ public class TrafficMap {
                     scheduler.addToGarage(car);
                     carQueue.remove(car);
                     count++;
-                }
 
-                carQueue.addAll(carNotSent);
-                if (!scheduler.step()) {
+                }
+                if (!scheduler.step())
                     return -1L;
-                }
-
                 updateGraphEdge();
             }
         }
+
 
         if (!scheduler.stepUntilFinish(getCars().size()))
             return -1L;
@@ -636,6 +648,10 @@ public class TrafficMap {
 
     public Graph getGraph() {
         return graph;
+    }
+
+    public Scheduler getScheduler() {
+        return scheduler;
     }
 }
 

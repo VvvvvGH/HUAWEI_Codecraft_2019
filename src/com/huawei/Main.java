@@ -9,8 +9,8 @@ public class Main {
     private static final Logger logger = Logger.getLogger(Main.class);
 
 
-    public static TrafficMap trafficMap = new TrafficMap();
-    public static Scheduler scheduler = new Scheduler();
+    public static TrafficMap trafficMap = new TrafficMap(new Scheduler());
+    public static Scheduler scheduler = trafficMap.getScheduler();
 
     public static int bestVal = 0;
 
@@ -99,18 +99,18 @@ public class Main {
         trafficMap.initGraphEdge();
         trafficMap.pathClassification();
 
-        trafficMap.preScheduleAccurateTest(10);
-        trafficMap.preScheduleAccurateTest(10);
-        trafficMap.preScheduleAccurateTest(10);
-        trafficMap.preScheduleAccurateTest(10);
+        trafficMap.preScheduleDirection(10);
+        trafficMap.preScheduleDirection(10);
+        trafficMap.preScheduleDirection(10);
+        trafficMap.preScheduleDirection(10);
 
         Car car1 = trafficMap.getCar(10000);
         if (car1.getFrom() == 18 && car1.getTo() == 50) {
             System.out.println("Map 1");
-            bestVal = 38;
+            bestVal = 35;
         } else {
             System.out.println("Map 2");
-            bestVal = 29;
+            bestVal = 34;
         }
 
 
