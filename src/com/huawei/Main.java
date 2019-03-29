@@ -104,7 +104,7 @@ public class Main {
 
         System.out.println(minTime);
         System.out.println(bestVal);
-        trafficMap.scheduleTest2(bestVal);
+        trafficMap.scheduleTest(bestVal);
 
         //打印结果
         ArrayList<String> answer = new ArrayList<>();
