@@ -92,12 +92,6 @@ public class TrafficMap {
             CrossRoads to = crossMap.get(road.getEnd());
             weights[i] = graph.getEdgeWeight(graph.getEdge(from, to));
 
-//            if (road.isBidirectional()) {
-//                graph.removeAllEdges(to, from);
-//                RoadEdge roadEdge1 = new RoadEdge(road, to, from);
-//                graph.setEdgeWeight(roadEdge1, weights[i]);
-//                graph.addEdge(to, from, roadEdge1);
-//            }
             i++;
         }
         return weights;
@@ -227,6 +221,98 @@ public class TrafficMap {
         return scheduler.getSystemScheduleTime();
     }
 
+
+    public Long scheduleTest2(int carFlowLimit) {
+        scheduler.reset();
+        updateGraphEdge();
+
+        HashMap<Integer, Integer> carPlanTime = new HashMap<>();
+
+
+        cars.forEach((carId, car) -> {
+            carPlanTime.put(carId, car.getPlanTime());
+        });
+
+        int time = 0;
+        int count = 0;
+        int dynamicFlow = carFlowLimit;
+
+        HashMap<Integer, PriorityQueue<Car>> carDirection = directionClassification(DIRECTION);
+
+        for (int i = 0; i <= 1; i++) {
+
+            PriorityQueue<Car> carQueue = carDirection.get(i);
+
+            time += 2;
+
+            while (!carQueue.isEmpty()) {
+                time++;
+                count = 0;
+
+                boolean exit = false;
+                while (!exit) {
+
+                    System.out.println("Time: "+ time+" Trying dynamicflow "+ dynamicFlow);
+                    scheduler.saveSchedulerState(time);
+                    while (true) {
+                        Car car = carQueue.peek();
+                        if (car == null || carPlanTime.get(car.getId()) > time || count >= dynamicFlow){
+                            exit=true;
+                            break;
+                        }
+
+                        GraphPath path = shortestDistancePath(graph, car.getFrom(), car.getTo());
+                        setCarPath(car, path);
+
+                        boolean hasBusyPath = false;
+                        for (Object edge : path.getEdgeList()) {
+                            if (((RoadEdge) edge).calculateLoad() > 0.9) {
+                                hasBusyPath = true;
+                                break;
+                            }
+                        }
+                        if (hasBusyPath) {
+                            carPlanTime.put(car.getId(), carPlanTime.get(car.getId()) + 1);
+                            continue;
+                        }
+//                    for (int roadId : car.getPath()) {
+//                        if (roads.get(roadId).calculateLoad() > 0.90) {
+//                            hasBusyPath = true;
+//                        }
+//                    }
+
+
+                        car.setStartTime(time).setState(CarState.IN_GARAGE);
+                        scheduler.addToGarage(car);
+                        carQueue.remove(car);
+                        count++;
+
+                    }
+
+                    if(!scheduler.stepUntilFinish()) {
+                        exit = true;
+                        scheduler.restoreSchedulerState(time);
+                        System.err.println("Dead lock happened, restore state.");
+                        dynamicFlow-=2;
+                    }
+                    dynamicFlow++;
+                }
+                if (!scheduler.step())
+                    return -1L;
+                updateGraphEdge();
+            }
+
+        }
+
+
+        if (!scheduler.stepUntilFinish())
+            return -1L;
+        scheduler.printCarStates();
+        return scheduler.getSystemScheduleTime();
+    }
+
+
+
     public void pathClassification() {
         priorityQueue.clear();
 
@@ -310,6 +396,27 @@ public class TrafficMap {
 
         }
         return directionMap;
+
+    }
+
+    public ArrayList<Car> pathLengthClassification() {
+        priorityQueue.clear();
+
+        this.getCars().forEach(
+                (carId, car) -> priorityQueue.offer(car)
+        );
+        ArrayList<Car> carList = new ArrayList<>();
+
+        carList.addAll(cars.values());
+
+        carList.sort(new Comparator<Car>() {
+            @Override
+            public int compare(Car car1, Car car2) {
+                return shortestDistancePath(graph, car1.getFrom(), car1.getTo()).getLength() - shortestDistancePath(graph, car2.getFrom(), car2.getTo()).getLength();
+            }
+        });
+
+        return carList;
 
     }
 

@@ -85,22 +85,22 @@ public class Main {
             bestVal = 35;
         } else {
             System.out.println("Map 2");
-            bestVal = 34;
+            bestVal = 30;
         }
 
 
         long minTime = 99999;
-//        for (int i = bestVal; i < bestVal + 30; i++) {
-//            System.out.println("Trying " + i);
-//            long result = trafficMap.scheduleTest2(i);
-//            if (minTime > result && result != -1) {
-//                minTime = result;
-//                bestVal = i;
-//            }
-//            if(result==-1){
-//                break;
-//            }
-//        }
+        for (int i = bestVal; i < bestVal + 10; i++) {
+            System.out.println("Trying " + i);
+            long result = trafficMap.scheduleTest(i);
+            if (minTime > result && result != -1) {
+                minTime = result;
+                bestVal = i;
+            }
+            if(result==-1){
+                break;
+            }
+        }
 
         System.out.println(minTime);
         System.out.println(bestVal);

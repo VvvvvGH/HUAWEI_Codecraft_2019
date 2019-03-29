@@ -50,7 +50,7 @@ public class Scheduler {
     public void printCarStates() {
 
         System.out.printf("Car State at time %d : OFF_ROAD: %d IN_GARAGE: %d WAIT: %d END: %d  \n", systemScheduleTime, carStateCounter.get(CarState.OFF_ROAD), carStateCounter.get(CarState.IN_GARAGE), carStateCounter.get(CarState.WAIT), carStateCounter.get(CarState.END));
-        if (carStateCounter.get(CarState.WAIT) == 0 && carStateCounter.get(CarState.END) == 0 && carStateCounter.get(CarState.IN_GARAGE) == 0) {
+        if (carStateCounter.get(CarState.WAIT)==0&&carStateCounter.get(CarState.END)==0&&carStateCounter.get(CarState.IN_GARAGE)==0) {
             System.out.println("系统调度时间: " + systemScheduleTime);
             System.out.println("所有车辆实际总调度时间: " + totalScheduleTime);
             System.out.println("所有车辆总调度时间: " + totalActualScheduleTime);
@@ -59,7 +59,7 @@ public class Scheduler {
     }
 
     public boolean stepUntilFinish() {
-        while (carStateCounter.get(CarState.WAIT) != 0 || carStateCounter.get(CarState.END) != 0 || carStateCounter.get(CarState.IN_GARAGE) != 0) {
+        while (carStateCounter.get(CarState.WAIT)!=0||carStateCounter.get(CarState.END)!=0||carStateCounter.get(CarState.IN_GARAGE)!=0) {
             if (!step())
                 return false;
         }
@@ -80,10 +80,6 @@ public class Scheduler {
     }
 
     public boolean step() {
-        if (carStateCounter.get(CarState.WAIT) == 0 && carStateCounter.get(CarState.END) == 0 && carStateCounter.get(CarState.IN_GARAGE) == 0) {
-            return true;
-        }
-
 
         //系统调度时间
         systemScheduleTime += UNIT_TIME;
