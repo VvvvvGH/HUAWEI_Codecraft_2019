@@ -11,7 +11,7 @@ public class Scheduler {
     private TreeMap<Integer, Car> carMap = new TreeMap<>();
     private ArrayList<Car> garage = new ArrayList<>();
 
-    private HashMap<String, Object> stateMap = new HashMap<>();
+    private HashMap<Long, HashMap<String, Object>> timeStateMap = new HashMap<>();
 
     // 基于统计的死锁检测，　若系统一段时间内状态没有发生变化，则认为是死锁
     public static boolean carStateChanged = false;
@@ -50,7 +50,7 @@ public class Scheduler {
     public void printCarStates() {
 
         System.out.printf("Car State at time %d : OFF_ROAD: %d IN_GARAGE: %d WAIT: %d END: %d  \n", systemScheduleTime, carStateCounter.get(CarState.OFF_ROAD), carStateCounter.get(CarState.IN_GARAGE), carStateCounter.get(CarState.WAIT), carStateCounter.get(CarState.END));
-        if (carStateCounter.get(CarState.OFF_ROAD) == carMap.size()) {
+        if (carStateCounter.get(CarState.WAIT) == 0 && carStateCounter.get(CarState.END) == 0 && carStateCounter.get(CarState.IN_GARAGE) == 0) {
             System.out.println("系统调度时间: " + systemScheduleTime);
             System.out.println("所有车辆实际总调度时间: " + totalScheduleTime);
             System.out.println("所有车辆总调度时间: " + totalActualScheduleTime);
@@ -58,8 +58,8 @@ public class Scheduler {
 
     }
 
-    public boolean stepUntilFinish(int numberOfCars) {
-        while (carStateCounter.get(CarState.OFF_ROAD) != numberOfCars) {
+    public boolean stepUntilFinish() {
+        while (carStateCounter.get(CarState.WAIT) != 0 || carStateCounter.get(CarState.END) != 0 || carStateCounter.get(CarState.IN_GARAGE) != 0) {
             if (!step())
                 return false;
         }
@@ -80,6 +80,10 @@ public class Scheduler {
     }
 
     public boolean step() {
+        if (carStateCounter.get(CarState.WAIT) == 0 && carStateCounter.get(CarState.END) == 0 && carStateCounter.get(CarState.IN_GARAGE) == 0) {
+            return true;
+        }
+
 
         //系统调度时间
         systemScheduleTime += UNIT_TIME;
@@ -208,7 +212,17 @@ public class Scheduler {
     }
 
     public void addToGarage(Car car) {
+        car.setState(CarState.IN_GARAGE);
         garage.add(car);
+        // 对车库内的车按ID进行排序
+        Collections.sort(garage, Car.idComparator);
+    }
+
+    public void addAllToGarage(ArrayList<Car> cars) {
+        cars.forEach(car -> {
+            car.setState(CarState.IN_GARAGE);
+            garage.add(car);
+        });
         // 对车库内的车按ID进行排序
         Collections.sort(garage, Car.idComparator);
     }
@@ -341,7 +355,10 @@ public class Scheduler {
         return builder.toString();
     }
 
-    public void saveSchedulerState() {
+    public void saveSchedulerState(long time) {
+
+        HashMap<String, Object> stateMap = new HashMap<>();
+
         ArrayList<Car.CarStates> carStates = new ArrayList<>();
 
         carMap.values().forEach(car ->
@@ -376,9 +393,12 @@ public class Scheduler {
         stateMap.put("CarState.OFF_ROAD", carStateCounter.get(CarState.OFF_ROAD));
         stateMap.put("CarState.END", carStateCounter.get(CarState.END));
 
+        timeStateMap.put(time, stateMap);
     }
 
-    public void restoreSchedulerState() {
+    public void restoreSchedulerState(long time) {
+
+        HashMap<String, Object> stateMap = timeStateMap.get(time);
 
         ArrayList<Car.CarStates> carStates = (ArrayList<Car.CarStates>) stateMap.get("carState");
 
