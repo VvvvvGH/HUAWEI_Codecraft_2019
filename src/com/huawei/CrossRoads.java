@@ -3,7 +3,6 @@ package com.huawei;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.PriorityQueue;
 import java.util.TreeMap;
 
 public class CrossRoads implements Comparable<CrossRoads> {
@@ -50,7 +49,7 @@ public class CrossRoads implements Comparable<CrossRoads> {
     }
 
 
-    public void schedule() {
+    public void schedule(Scheduler scheduler) {
 
         // 状态变化 flag
         stateChanged = false;
@@ -67,7 +66,7 @@ public class CrossRoads implements Comparable<CrossRoads> {
                 while (true) {
 
                     // 优先队列里每一辆车
-                    if ((car = fetchCarFromQueue(road)) != null) {
+                    if ((car = fetchCarFromList(road)) != null) {
                         Lane laneContainCar = null;
                         for (Lane lane : road.getLaneList()) {
                             if (lane.getCarMap().containsValue(car)) {
@@ -82,22 +81,22 @@ public class CrossRoads implements Comparable<CrossRoads> {
                             if (carHasPriorityToMove(car, road)) {
 
                                 // 车路径中该路的index
-                                int roadIdx = car.getPath().lastIndexOf(road.getId());
+                                int roadIdx = car.getRoadIdx();
                                 int from = car.getPath().get(roadIdx);                 // 车来源路的ID
                                 int to = car.getPath().get(roadIdx + 1);               // 车目标路的ID
 
                                 //移车
-                                moveCarToNextRoadDemo(from, to, car);
-//                                moveCarToNextRoad(from, to, car);
+                                moveCarToNextRoad(from, to, car);
+
+                                // 优先上路车辆
+                                scheduler.driveCarInGarage(true);
+
+//                                road.updateLane(laneContainCar);
+
+                                road.moveCarsOnRoad();
 
                                 //更新等待队列
-                                road.updateWaitingQueue(getId());
-
-
-                                road.updateLane(laneContainCar);
-
-                                //更新等待队列
-                                road.updateWaitingQueue(getId());
+                                road.updateCarSequenceList(getId());
 
                                 //该车仍是wait状态
                                 if (car.getState() == CarState.WAIT)
@@ -107,10 +106,12 @@ public class CrossRoads implements Comparable<CrossRoads> {
                                 break;
 
                         } else {
+                            // 优先上路车辆
+                            scheduler.driveCarInGarage(true);
+
+                            road.moveCarsOnRoad();
                             //更新等待队列
-                            road.updateWaitingQueue(getId());
-                            road.updateLane(laneContainCar);
-                            road.updateWaitingQueue(getId());
+                            road.updateCarSequenceList(getId());
                         }
 
                     } else
@@ -122,19 +123,18 @@ public class CrossRoads implements Comparable<CrossRoads> {
 
     }
 
-    private Car fetchCarFromQueue(Road road) {
-        PriorityQueue<Car> queue = road.getWaitingQueue(getId());
-        // 当路为单向时，查找 start端的 queue为空
-        if (queue == null)
+    private Car fetchCarFromList(Road road) {
+        ArrayList<Car> carArrayList = road.getCarSequenceList(getId());
+        // 当路为单向时，查找 start端的 列表为空
+        if (carArrayList == null || carArrayList.size() == 0)
             return null;
 
-        return queue.peek();
+        return carArrayList.get(0);
     }
 
     private boolean carReachedDestination(Car car, Road road) {
         // 车路径中该路的index
-        int roadIdx = car.getPath().lastIndexOf(road.getId());
-
+        int roadIdx = car.getRoadIdx();
         if (roadIdx == car.getPath().size() - 1) {
             // 车到达目的地
             // 移除waiting queue 里面的车
@@ -143,7 +143,7 @@ public class CrossRoads implements Comparable<CrossRoads> {
             Scheduler.totalScheduleTime += car.getEndTime() - car.getActualStartTime();
             Scheduler.totalActualScheduleTime += car.getEndTime() - car.getStartTime();
             road.removeCarFromRoad(car);
-            if (!road.getWaitingQueue(getId()).remove(car)) {
+            if (!road.getCarSequenceList(getId()).remove(car)) {
                 System.err.println("CrossRoads#carReachedDestination#error");
             }
             stateChanged = true;
@@ -155,7 +155,7 @@ public class CrossRoads implements Comparable<CrossRoads> {
 
     private boolean carHasPriorityToMove(Car car, Road road) {
         // 车路径中该路的index
-        int roadIdx = car.getPath().lastIndexOf(road.getId());
+        int roadIdx = car.getRoadIdx();
         int from = car.getPath().get(roadIdx);         // 车来源路的ID
         int to = car.getPath().get(roadIdx + 1);       // 车目标路的ID
 
@@ -163,26 +163,27 @@ public class CrossRoads implements Comparable<CrossRoads> {
         if (turn == Turn.LEFT) {
             // 检查直行优先
             // 检查要左转的车 右边路口有没有直行的车
-            if (checkConflict(road.getId(), to, Turn.RIGHT, Turn.STRAIGHT)) {
+            if (checkConflict(car,road.getId(), to, Turn.RIGHT, Turn.STRAIGHT)) {
                 return false;
             }
         }
         if (turn == Turn.RIGHT) {
             // 检查左转优先
             // 检查要右转的车 对面路口有没有左转的车
-            if (checkConflict(road.getId(), to, Turn.STRAIGHT, Turn.LEFT)) {
+            if (checkConflict(car,road.getId(), to, Turn.STRAIGHT, Turn.LEFT)) {
                 return false;
             }
             // 检查直行优先
             // 检查要右转的车 左边路口有没有直行的车
-            if (checkConflict(road.getId(), to, Turn.LEFT, Turn.STRAIGHT)) {
+            if (checkConflict(car,road.getId(), to, Turn.LEFT, Turn.STRAIGHT)) {
                 return false;
             }
         }
         return true;
     }
 
-    private void moveCarToNextRoadDemo(int from, int to, Car car) {
+    private void moveCarToNextRoad(int from, int to, Car car) {
+
         Road fromRoad = roadTreeMap.get(from);
         Road toRoad = roadTreeMap.get(to);
         Lane laneContainCarOnFrom = fromRoad.laneContainsCar(car);
@@ -192,12 +193,12 @@ public class CrossRoads implements Comparable<CrossRoads> {
 
 
         if (v1 <= s1) {
-            System.err.println("moveCarToNextRoadDemo#error#v1<=s1");
+            System.err.println("moveCarToNextRoad#error#v1<=s1");
             System.exit(0);
         }
 
         if (laneContainCarOnFrom.getFrontCarPosition(car.getPosition()) != -1) {
-            System.err.println("moveCarToNextRoadDemo#error#laneContainCarOnFrom");
+            System.err.println("moveCarToNextRoad#error#laneContainCarOnFrom");
         }
 
 
@@ -257,7 +258,7 @@ public class CrossRoads implements Comparable<CrossRoads> {
                 internalStateChanged = false;
                 return;
             } else {
-                System.err.println("moveCarToNextRoadDemo#error#unexception state");
+                System.err.println("moveCarToNextRoad#error#unexception state");
             }
         }
 
@@ -276,8 +277,8 @@ public class CrossRoads implements Comparable<CrossRoads> {
                 int positionOnNextRoad = s2;
                 if (laneToPut.putCar(car, positionOnNextRoad)) {
                     fromRoad.removeCarFromRoad(car);
-                    fromRoad.getWaitingQueue(getId()).remove(car);
-                    car.setCurrentSpeed(v2).setState(CarState.END);
+                    fromRoad.getCarSequenceList(getId()).remove(car);
+                    car.setCurrentSpeed(v2).setState(CarState.END).setRoadIdx(car.getRoadIdx() + 1);
                     internalStateChanged = true;
                     return;
                 } else {
@@ -293,8 +294,8 @@ public class CrossRoads implements Comparable<CrossRoads> {
                     positionOnNextRoad = s2;
                     if (laneToPut.putCar(car, positionOnNextRoad)) {
                         fromRoad.removeCarFromRoad(car);
-                        fromRoad.getWaitingQueue(getId()).remove(car);
-                        car.setCurrentSpeed(v2).setState(CarState.END);
+                        fromRoad.getCarSequenceList(getId()).remove(car);
+                        car.setCurrentSpeed(v2).setState(CarState.END).setRoadIdx(car.getRoadIdx() + 1);
                         internalStateChanged = true;
                         return;
                     } else {
@@ -306,8 +307,8 @@ public class CrossRoads implements Comparable<CrossRoads> {
                     if (frontCar.getState() == CarState.END) {
                         if (laneToPut.putCar(car, positionOnNextRoad)) {
                             fromRoad.removeCarFromRoad(car);
-                            fromRoad.getWaitingQueue(getId()).remove(car);
-                            car.setCurrentSpeed(v2).setState(CarState.END);
+                            fromRoad.getCarSequenceList(getId()).remove(car);
+                            car.setCurrentSpeed(v2).setState(CarState.END).setRoadIdx(car.getRoadIdx() + 1);
                             internalStateChanged = true;
                             return;
                         } else {
@@ -324,125 +325,6 @@ public class CrossRoads implements Comparable<CrossRoads> {
         }
     }
 
-    private void moveCarToNextRoad(int from, int to, Car car) {
-
-        Road fromRoad = roadTreeMap.get(from);
-        Road toRoad = roadTreeMap.get(to);
-
-        //下一条道路可行驶的最大速度
-        int v2 = Math.min(toRoad.getTopSpeed(), car.getTopSpeed());
-        // 当前道路可行驶的距离
-        int s1 = fromRoad.getLen() - car.getPosition();
-        // 下一条道路可行驶的距离
-        int s2 = v2 - s1;
-
-        // 记录下一路口车的状态。即使不过路口也会记录，保证 wait -> wait 和　wait -> end 状态。
-        CarState frontCarState = CarState.END;
-        boolean hasPosition = false;
-        boolean carWillCrossTheRoad = true;
-        int positionOnNextRoad = -1;
-        int frontCarPosition = -1;
-
-        // 先判断车距离上会不会过路口
-        if (s2 <= 0) {
-            carWillCrossTheRoad = false;
-        }
-
-        // 每一条车道处理
-        ArrayList<Lane> laneList = getLaneListFromTargetRoad(toRoad);
-        for (Lane lane : laneList) {
-
-            if (!lane.hasPosition()) {
-                Car frontCar = lane.getCar(lane.getFrontCarPosition(0));
-                if (frontCar.getState() == CarState.WAIT)
-                    frontCarState = CarState.WAIT;
-                continue;
-            }
-
-            hasPosition = true;
-
-            if (!lane.isEmpty()) {
-                Car frontCar = lane.getCar(lane.getFrontCarPosition(0));
-                frontCarPosition = lane.getFrontCarPosition(0);
-                frontCarState = frontCar.getState();
-
-                //该车道被堵住了　或者前车状态为wait
-                if (frontCarPosition == 1)
-                    continue;
-
-                if (frontCarPosition > s2)
-                    positionOnNextRoad = s2;
-                else {
-                    positionOnNextRoad = frontCarPosition - 1;
-                    if (frontCar.getState() == CarState.WAIT)
-                        return;
-                }
-
-            } else {
-                frontCarState = CarState.END;
-                positionOnNextRoad = s2;
-            }
-
-            //车会过马路
-            if (carWillCrossTheRoad) {
-                // 开始将车移到下一条路
-                Lane laneContainCar = null;
-                for (Lane l : fromRoad.getLaneList()) {
-                    if (l.getCarMap().containsValue(car)) {
-                        laneContainCar = l;
-                        break;
-                    }
-                }
-                if (laneContainCar.getFrontCarPosition(car.getPosition()) != -1) {
-                    System.err.println("263");
-                }
-                if (lane.putCar(car, positionOnNextRoad)) {
-                    fromRoad.removeCarFromRoad(car);
-                    fromRoad.getWaitingQueue(getId()).remove(car);
-                    car.setCurrentSpeed(v2).setState(CarState.END);
-                    internalStateChanged = true;
-                    return;
-                }
-            }
-        }
-        if (!hasPosition) {
-            carWillCrossTheRoad = false;
-        }
-
-        //车不过马路
-        if (!carWillCrossTheRoad && fromRoad.getLen() != car.getPosition()) {
-            Lane laneContainsThisCar = null;
-            for (Lane lane : fromRoad.getLaneList()) {
-                if (lane.getCar(car.getPosition()) != null && lane.getCar(car.getPosition()).equals(car))
-                    laneContainsThisCar = lane;
-            }
-
-            if (laneContainsThisCar == null)
-                System.err.println("CrossRoad Error: lane is null");
-
-
-            frontCarPosition = laneContainsThisCar.getFrontCarPosition(car.getPosition());
-            if (frontCarPosition != -1) {
-                if ((frontCarPosition - car.getPosition()) <= car.getCurrentSpeed())
-                    positionOnNextRoad = frontCarPosition - 1;
-                else
-                    positionOnNextRoad = car.getPosition() + car.getCurrentSpeed();
-            } else {
-                positionOnNextRoad = car.getPosition() + car.getCurrentSpeed();
-                if (positionOnNextRoad >= fromRoad.getLen()) {
-                    positionOnNextRoad = fromRoad.getLen();
-                } else {
-//                	System.err.println("positionOnNextRoad "+positionOnNextRoad+" len "+fromRoad.getLen());
-                }
-            }
-            laneContainsThisCar.updateCar(car, car.getPosition(), positionOnNextRoad);
-            car.setState(CarState.END);
-            internalStateChanged = true;
-        } else {
-            car.setState(frontCarState);
-        }
-
-    }
 
     private ArrayList<Lane> getLaneListFromTargetRoad(Road road) {
         ArrayList<Lane> laneList;
@@ -466,24 +348,32 @@ public class CrossRoads implements Comparable<CrossRoads> {
         return Turn.RIGHT;
     }
 
-    private boolean checkConflict(int roadId, int to, Turn conflictRoadDirection, Turn conflictCarDirection) {
+    private boolean checkConflict(Car carToMove,int roadId, int to, Turn conflictRoadDirection, Turn conflictCarDirection) {
         for (int otherRoadId : roadTreeMap.keySet()) {
             if (roadId != otherRoadId && findDirection(roadId, otherRoadId) == conflictRoadDirection) {
                 Road road = roadTreeMap.get(otherRoadId);
                 Car car;
 
                 //那里没有车，可以走
-                if ((car = fetchCarFromQueue(road)) == null)
+                if ((car = fetchCarFromList(road)) == null)
                     return false;
 
+                // 优先级更高，不用管别的方向
+                if(!car.isPriority()&&carToMove.isPriority())
+                    return false;
+
+                // 优先级低于那辆车，不能走
+                if(car.isPriority()&&!carToMove.isPriority())
+                    return true;
+
                 // 车不走那条路，没有冲突 or 车到达目的地
-                int roadIdx = car.getPath().lastIndexOf(to);
-                if (roadIdx == -1) {
+                int roadIdx = car.getRoadIdx();
+                if (roadIdx == -1 || (car.getPath().size() - 1) != roadIdx && car.getPath().get(roadIdx + 1) != to) {
                     return false;
                 }
 
                 //如果别的车更高优先级，就不可以走
-                int from = car.getPath().get(roadIdx - 1);
+                int from = car.getPath().get(roadIdx);
                 if (findDirection(from, to) == conflictCarDirection)
                     return true;
 

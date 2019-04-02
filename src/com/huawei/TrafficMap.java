@@ -13,7 +13,7 @@ public class TrafficMap {
     private Graph<CrossRoads, RoadEdge> graph =
             new SimpleDirectedWeightedGraph<>(RoadEdge.class);
 
-    private final int DIRECTION = 1;
+    public static final int DIRECTION = 3;
     // Direction = 1 north south
     // Direction = 2 east west
     // Direction = 3 both
@@ -156,6 +156,13 @@ public class TrafficMap {
         HashMap<Integer, Integer> carPlanTime = new HashMap<>();
 
 
+        // 先把优先车辆放入车库
+        cars.forEach((carId,car)->{
+            if(car.isPreset()){
+                scheduler.addToGarage(car);
+            }
+        });
+
         cars.forEach((carId, car) -> {
             carPlanTime.put(carId, car.getPlanTime());
         });
@@ -201,7 +208,7 @@ public class TrafficMap {
 //                    }
 
 
-                    car.setStartTime(time).setState(CarState.IN_GARAGE);
+                    car.setStartTime(time);
                     scheduler.addToGarage(car);
                     carQueue.remove(car);
                     count++;
@@ -252,12 +259,12 @@ public class TrafficMap {
                 boolean exit = false;
                 while (!exit) {
 
-                    System.out.println("Time: "+ time+" Trying dynamicflow "+ dynamicFlow);
+                    System.out.println("Time: " + time + " Trying dynamicflow " + dynamicFlow);
                     scheduler.saveSchedulerState(time);
                     while (true) {
                         Car car = carQueue.peek();
-                        if (car == null || carPlanTime.get(car.getId()) > time || count >= dynamicFlow){
-                            exit=true;
+                        if (car == null || carPlanTime.get(car.getId()) > time || count >= dynamicFlow) {
+                            exit = true;
                             break;
                         }
 
@@ -289,11 +296,11 @@ public class TrafficMap {
 
                     }
 
-                    if(!scheduler.stepUntilFinish()) {
+                    if (!scheduler.stepUntilFinish()) {
                         exit = true;
                         scheduler.restoreSchedulerState(time);
                         System.err.println("Dead lock happened, restore state.");
-                        dynamicFlow-=2;
+                        dynamicFlow -= 2;
                     }
                     dynamicFlow++;
                 }
@@ -561,10 +568,10 @@ public class TrafficMap {
             CrossRoads from = crossMap.get(road.getStart());
             CrossRoads to = crossMap.get(road.getEnd());
             RoadEdge edge = graph.getEdge(from, to);
-            graph.setEdgeWeight(edge, road.getLen() * 1.5);
+            graph.setEdgeWeight(edge, road.getLen() * 6.5);
             if (road.isBidirectional()) {
                 RoadEdge opposeEdge = graph.getEdge(to, from);
-                graph.setEdgeWeight(opposeEdge, road.getLen() * 1.5);
+                graph.setEdgeWeight(opposeEdge, road.getLen() * 6.5);
             }
         }
 

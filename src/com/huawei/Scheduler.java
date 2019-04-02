@@ -35,7 +35,7 @@ public class Scheduler {
         // Add car to garage
         garage.addAll(carMap.values());
         // 对车库内的车按ID进行排序
-        Collections.sort(garage, Car.idComparator);
+        Collections.sort(garage, Car.priorityTimeIdComparator);
 
 
         while (carStateCounter.get(CarState.OFF_ROAD) != carMap.size()) {
@@ -50,7 +50,7 @@ public class Scheduler {
     public void printCarStates() {
 
         System.out.printf("Car State at time %d : OFF_ROAD: %d IN_GARAGE: %d WAIT: %d END: %d  \n", systemScheduleTime, carStateCounter.get(CarState.OFF_ROAD), carStateCounter.get(CarState.IN_GARAGE), carStateCounter.get(CarState.WAIT), carStateCounter.get(CarState.END));
-        if (carStateCounter.get(CarState.WAIT)==0&&carStateCounter.get(CarState.END)==0&&carStateCounter.get(CarState.IN_GARAGE)==0) {
+        if (carStateCounter.get(CarState.WAIT) == 0 && carStateCounter.get(CarState.END) == 0 && carStateCounter.get(CarState.IN_GARAGE) == 0) {
             System.out.println("系统调度时间: " + systemScheduleTime);
             System.out.println("所有车辆实际总调度时间: " + totalScheduleTime);
             System.out.println("所有车辆总调度时间: " + totalActualScheduleTime);
@@ -59,15 +59,15 @@ public class Scheduler {
     }
 
     public boolean stepUntilFinish() {
-        while (carStateCounter.get(CarState.WAIT)!=0||carStateCounter.get(CarState.END)!=0||carStateCounter.get(CarState.IN_GARAGE)!=0) {
+        while (carStateCounter.get(CarState.WAIT) != 0 || carStateCounter.get(CarState.END) != 0 || carStateCounter.get(CarState.IN_GARAGE) != 0) {
             if (!step())
                 return false;
         }
         return true;
     }
 
-    public boolean stepUntilFinishDebug(int numberOfCars) {
-        while (carStateCounter.get(CarState.OFF_ROAD) != numberOfCars) {
+    public boolean stepUntilFinishDebug() {
+        while (carStateCounter.get(CarState.WAIT) != 0 || carStateCounter.get(CarState.END) != 0 || carStateCounter.get(CarState.IN_GARAGE) != 0) {
             if (!stepWithPlot())
                 return false;
         }
@@ -80,28 +80,30 @@ public class Scheduler {
     }
 
     public boolean step() {
-
         //系统调度时间
         systemScheduleTime += UNIT_TIME;
 
         //       １升序循环整个地图中所有的道路
         //       ２让所有在道路上的车开始行驶到等待或终止状态
         driveAllCarOnRoad();
-
+        // 优先上路车辆
+        driveCarInGarage(true);
         do {
             //全局车辆状态标识
             carStateChanged = false;
 
             // 应该用do while
             for (CrossRoads cross : crossMap.values()) {
-                cross.schedule();
+                cross.schedule(this);
             }
 
             if (detectDeadLock())
                 return false;
+            printCarStates();
         } while (!allCarInEndState());
+        // 非优先上路车辆
+        driveCarInGarage(false);
 
-        driveCarInGarage();
 
         return true;
     }
@@ -125,14 +127,14 @@ public class Scheduler {
 
             road.moveCarsOnRoad();
             if (road.isBidirectional()) {
-                road.offerWaitingQueue(road.getStart());
-                road.offerWaitingQueue(road.getEnd());
+                road.createSequenceList(road.getStart());
+                road.createSequenceList(road.getEnd());
             } else
-                road.offerWaitingQueue(road.getEnd());
+                road.createSequenceList(road.getEnd());
         }
     }
 
-    private void driveCarInGarage() {
+    public void driveCarInGarage(boolean highPriority) {
         //      车辆到达实际出发时间，需要上路行驶。
         //      如果存在同时多辆到达出发时间且初始道路相同，则按车辆编号由小到大的顺序上路行驶,进入道路车道编号依然由车道小的优先进入。
         //      道路上没有车位可以上位，就等下一时刻上路
@@ -144,6 +146,11 @@ public class Scheduler {
                 System.err.println("ERROR: 车库里出现错误状态的车。");
                 iterator.remove();
                 continue;
+            }
+            // 仅允许高优先级的车出发
+            if (highPriority) {
+                if (!car.isPriority())
+                    continue;
             }
 
             if (car.getStartTime() <= systemScheduleTime) { // 车辆到达开始时间
@@ -172,6 +179,8 @@ public class Scheduler {
             } else if (car.getStartTime() < car.getPlanTime())
                 System.err.println("车不能早于计划时间出发!");
         }
+
+        // TODO: Sort cars
     }
 
     private boolean allCarInEndState() {
@@ -208,10 +217,11 @@ public class Scheduler {
     }
 
     public void addToGarage(Car car) {
+
         car.setState(CarState.IN_GARAGE);
         garage.add(car);
-        // 对车库内的车按ID进行排序
-        Collections.sort(garage, Car.idComparator);
+        // 对车库内的车按优先进行排序
+        Collections.sort(garage, Car.priorityTimeIdComparator);
     }
 
     public void addAllToGarage(ArrayList<Car> cars) {
@@ -219,8 +229,8 @@ public class Scheduler {
             car.setState(CarState.IN_GARAGE);
             garage.add(car);
         });
-        // 对车库内的车按ID进行排序
-        Collections.sort(garage, Car.idComparator);
+        // 对车库内的车按优先进行排序
+        Collections.sort(garage, Car.priorityTimeIdComparator);
     }
 
     public void clearGarage() {
@@ -264,6 +274,10 @@ public class Scheduler {
 
     public int getUNIT_TIME() {
         return UNIT_TIME;
+    }
+
+    public static Long getTotalActualScheduleTime() {
+        return totalActualScheduleTime;
     }
 
     public TreeMap<Integer, CrossRoads> getCrossMap() {
@@ -410,7 +424,7 @@ public class Scheduler {
 
         garage = (ArrayList<Car>) stateMap.get("garage");
         // 对车库内的车按ID进行排序
-        Collections.sort(garage, Car.idComparator);
+        Collections.sort(garage, Car.priorityTimeIdComparator);
 
 
         totalScheduleTime = (Long) stateMap.get("totalScheduleTime");
@@ -425,6 +439,67 @@ public class Scheduler {
         carStateCounter.put(CarState.OFF_ROAD, (Integer) stateMap.get("CarState.OFF_ROAD"));
         carStateCounter.put(CarState.END, (Integer) stateMap.get("CarState.WAIT"));
 
+    }
+
+    public static void main(String[] args) {
+
+
+        ArrayList<String> cars = Main.readFile("/home/cheng/PycharmProjects/huawei2019_Test/data/1-map-exam-1/car.txt");
+        ArrayList<String> roads = Main.readFile("/home/cheng/PycharmProjects/huawei2019_Test/data/1-map-exam-1/road.txt");
+        ArrayList<String> crossRoads = Main.readFile("/home/cheng/PycharmProjects/huawei2019_Test/data/1-map-exam-1/cross.txt");
+        ArrayList<String> answers = Main.readFile("/home/cheng/PycharmProjects/huawei2019_Test/data/1-map-exam-1/answer.txt");
+
+        Scheduler scheduler = new Scheduler();
+
+
+        // Add road first. Then add cross
+        roads.forEach(
+                roadLine -> {
+                    Road road = new Road(roadLine);
+                    scheduler.addRoad(road);
+                }
+        );
+
+        crossRoads.forEach(
+                crossLine -> {
+                    CrossRoads cross = new CrossRoads(crossLine);
+                    scheduler.addCross(cross);
+                }
+        );
+
+        cars.forEach(
+                carLine -> {
+                    Car car = new Car(carLine);
+                    scheduler.addCar(car);
+                }
+        );
+
+        answers.forEach(
+                answer -> {
+                    scheduler.updateCarFromAnswer(answer);
+                }
+        );
+
+
+        scheduler.stepUntilFinish();
+        scheduler.printCarStates();
+
+
+    }
+
+    public void updateCarFromAnswer(String answer) {
+        String[] vars = answer.split(",");
+        int carId = Integer.parseInt(vars[0]);
+        // 更新车辆行驶信息
+        Car car = carMap.get(carId);
+        car.setStartTime(Integer.parseInt(vars[1]));
+        for (int i = 2; i < vars.length; i++) {
+            if (Integer.parseInt(vars[i]) > 0) {
+                car.addPath((Integer.parseInt(vars[i])));
+            }
+        }
+        // 把车加入车库
+        addToGarage(car);
     }
 
 

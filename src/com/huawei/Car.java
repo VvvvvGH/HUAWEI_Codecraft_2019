@@ -11,6 +11,8 @@ public class Car implements Comparable<Car> {
     private int to;
     private int topSpeed;
     private int planTime;
+    private boolean priority;
+    private boolean preset;
     private ArrayList<Integer> path = new ArrayList<>();
 
     private int currentSpeed = 0;
@@ -18,6 +20,7 @@ public class Car implements Comparable<Car> {
     private long actualStartTime = -1;
     private long endTime = -1;
     private int laneId = -1;
+    private int roadIdx = -1;
 
     private CarState state;
     private int position = -1;
@@ -25,13 +28,53 @@ public class Car implements Comparable<Car> {
 
     public static Comparator<Car> idComparator = Comparator.comparing(Car::getId);
 
+    public static Comparator<Car> priorityTimeIdComparator = new Comparator<Car>() {
+        @Override
+        public int compare(Car car1, Car car2) {
+            long i1;
+            long i2;
+            if (car1.isPriority())
+                i1 = (long) Math.pow(10, 8) * car1.getStartTime() + car1.getId();
+            else
+                i1 = (long) Math.pow(10, 10) * car1.getStartTime() + car1.getId();
 
-    public Car(int id, int start, int to, int topSpeed, int planTime) {
+            if (car2.isPriority())
+                i2 = (long) Math.pow(10, 8) * car2.getStartTime() + car2.getId();
+            else
+                i2 = (long) Math.pow(10, 10) * car2.getStartTime() + car2.getId();
+
+            return Long.compare(i1, i2);
+        }
+    };
+
+    public static Comparator<Car> priorityLaneIdComparator = new Comparator<Car>() {
+        @Override
+        public int compare(Car car1, Car car2) {
+
+            int i1;
+            int i2;
+            if (car1.isPriority())
+                i1 = car1.getPosition() * 1000 - car1.getLaneId();
+            else
+                i1 = car1.getPosition() * 100000 - car1.getLaneId();
+
+            if (car2.isPriority())
+                i2 = car2.getPosition() * 1000 - car2.getLaneId();
+            else
+                i2 = car2.getPosition() * 100000 - car2.getLaneId();
+
+            return Integer.compare(i1, i2);
+        }
+    };
+
+    public Car(int id, int start, int to, int topSpeed, int planTime, boolean priority, boolean preset) {
         this.id = id;
         this.from = start;
         this.to = to;
         this.topSpeed = topSpeed;
         this.planTime = planTime;
+        this.priority = priority;
+        this.preset = preset;
         setState(CarState.IN_GARAGE);
     }
 
@@ -42,7 +85,11 @@ public class Car implements Comparable<Car> {
         this.to = Integer.parseInt(vars[2]);
         this.topSpeed = Integer.parseInt(vars[3]);
         this.planTime = Integer.parseInt(vars[4]);
+        this.priority = Integer.parseInt(vars[5]) == 1;
+        this.preset = Integer.parseInt(vars[6]) == 1;
         setState(CarState.IN_GARAGE);
+        if (id==10001)
+            System.out.println(line);
     }
 
     public Car addPath(int roadId) {
@@ -238,6 +285,7 @@ public class Car implements Comparable<Car> {
         this.startTime = -1;
         this.endTime = -1;
         this.laneId = -1;
+        this.roadIdx = -1;
 
         this.state = CarState.IN_GARAGE;
         this.position = -1;
@@ -245,7 +293,7 @@ public class Car implements Comparable<Car> {
 
     public CarStates dumpStates() {
         ArrayList<Integer> carPath = new ArrayList<>(path);
-        return new CarStates(getCurrentSpeed(), getStartTime(), getEndTime(), getLaneId(), getState(), getPosition(), getId(), carPath);
+        return new CarStates(getCurrentSpeed(), getStartTime(), getEndTime(), getLaneId(), getState(), getPosition(), getId(), getRoadIdx(), carPath);
     }
 
     public void restoreStates(CarStates carStates) {
@@ -256,6 +304,7 @@ public class Car implements Comparable<Car> {
         this.state = carStates.getCarState();
         this.position = carStates.getPosition();
         this.path = carStates.getPath();
+        this.roadIdx = carStates.getRoadIdx();
     }
 
     public class CarStates {
@@ -267,8 +316,9 @@ public class Car implements Comparable<Car> {
         int position;
         int id;
         ArrayList<Integer> path;
+        int roadIdx;
 
-        public CarStates(int currentSpeed, long startTime, long endTime, int laneId, CarState carState, int position, int id, ArrayList<Integer> path) {
+        public CarStates(int currentSpeed, long startTime, long endTime, int laneId, CarState carState, int position, int id, int roadIdx, ArrayList<Integer> path) {
             this.currentSpeed = currentSpeed;
             this.startTime = startTime;
             this.endTime = endTime;
@@ -277,6 +327,7 @@ public class Car implements Comparable<Car> {
             this.position = position;
             this.id = id;
             this.path = path;
+            this.roadIdx = roadIdx;
         }
 
         public int getCurrentSpeed() {
@@ -350,5 +401,37 @@ public class Car implements Comparable<Car> {
             this.path = path;
             return this;
         }
+
+        public int getRoadIdx() {
+            return roadIdx;
+        }
     }
+
+    public int getRoadIdx() {
+        return roadIdx;
+    }
+
+    public Car setRoadIdx(int roadIdx) {
+        this.roadIdx = roadIdx;
+        return this;
+    }
+
+    public boolean isPriority() {
+        return priority;
+    }
+
+    public Car setPriority(boolean priority) {
+        this.priority = priority;
+        return this;
+    }
+
+    public boolean isPreset() {
+        return preset;
+    }
+
+    public Car setPreset(boolean preset) {
+        this.preset = preset;
+        return this;
+    }
+
 }

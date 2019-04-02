@@ -15,19 +15,15 @@ public class Main {
     public static int bestVal = 0;
 
     public static void initiate(String[] args) {
-        if (args.length != 4) {
-            logger.error("please input args: inputFilePath, resultFilePath");
-            return;
-        }
-
-
         logger.info("Start...");
 
 
         String carPath = args[0];
         String roadPath = args[1];
         String crossPath = args[2];
-        String answerPath = args[3];
+        String presetAnswerPath = args[3];
+        String answerPath = args[4];
+
         logger.info("carPath = " + carPath + " roadPath = " + roadPath + " crossPath = " + crossPath + " and answerPath = " + answerPath);
 
         // Read input files
@@ -35,6 +31,7 @@ public class Main {
         ArrayList<String> cars = readFile(carPath);
         ArrayList<String> roads = readFile(roadPath);
         ArrayList<String> crossRoads = readFile(crossPath);
+        ArrayList<String> presetAnswers = readFile(presetAnswerPath);
 
         trafficMap = new TrafficMap(new Scheduler());
         scheduler = trafficMap.getScheduler();
@@ -63,6 +60,20 @@ public class Main {
                     scheduler.addCar(car);
                 }
         );
+
+        presetAnswers.forEach(
+                answerLine -> {
+                    String[] vars = answerLine.split(",");
+                    int carId = Integer.parseInt(vars[0]);
+                    Car car = scheduler.getCar(carId);
+                    car.setStartTime(Integer.parseInt(vars[1]));
+                    for (int i = 2; i < vars.length; i++) {
+                        if (Integer.parseInt(vars[i]) > 0) {
+                            car.addPath((Integer.parseInt(vars[i])));
+                        }
+                    }
+                }
+        );
     }
 
     public static void main(String[] args) {
@@ -70,48 +81,19 @@ public class Main {
 
         long startTime = System.currentTimeMillis();
 
-        //运行规划
+
         trafficMap.initGraphEdge();
-        trafficMap.pathClassification();
-
-        trafficMap.preScheduleDirection(10);
-        trafficMap.preScheduleDirection(10);
-        trafficMap.preScheduleDirection(10);
-        trafficMap.preScheduleDirection(10);
-
-        Car car1 = trafficMap.getCar(10000);
-        if (car1.getFrom() == 18 && car1.getTo() == 50) {
-            System.out.println("Map 1");
-            bestVal = 35;
-        } else {
-            System.out.println("Map 2");
-            bestVal = 30;
-        }
+        trafficMap.scheduleTest(1);
 
 
-        long minTime = 99999;
-        for (int i = bestVal; i < bestVal + 10; i++) {
-            System.out.println("Trying " + i);
-            long result = trafficMap.scheduleTest(i);
-            if (minTime > result && result != -1) {
-                minTime = result;
-                bestVal = i;
-            }
-            if(result==-1){
-                break;
-            }
-        }
-
-        System.out.println(minTime);
-        System.out.println(bestVal);
-        trafficMap.scheduleTest(bestVal);
-
-        //打印结果
+        //打印结果，无需打印预置车辆
         ArrayList<String> answer = new ArrayList<>();
         String answerPath = args[3];
         trafficMap.getCars().forEach(
                 (carId, car) -> {
-                    answer.add(car.outputResult());
+                    if (!car.isPreset()) {
+                        answer.add(car.outputResult());
+                    }
                 }
         );
 

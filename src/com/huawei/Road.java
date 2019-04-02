@@ -18,27 +18,14 @@ public class Road {
     private ArrayList<Lane> laneList;
 
     // Key 为路的出口路口Id
-    private HashMap<Integer, PriorityQueue<Car>> waitingQueueMap = new HashMap<>();
+    private HashMap<Integer, ArrayList<Car>> carSequenceListMap = new HashMap<>();
 
-    public static Comparator<Car> carComparator = new Comparator<Car>() {
-        @Override
-        public int compare(Car o1, Car o2) {
-            int i1 = o1.getPosition() * 100 - o1.getLaneId();
-            int i2 = o2.getPosition() * 100 - o2.getLaneId();
-
-            return i2 - i1;
-        }
-    };
 
     public static Comparator<Road> roadCompareByLength = (Road r1, Road r2) -> Integer.compare(r2.getLen(), r1.getLen());
 
     public static Comparator<Road> roadCompareBySpeed = (Road r1, Road r2) -> Integer.compare(r2.getTopSpeed(), r1.getTopSpeed());
 
     public static Comparator<Road> roadCompareByWidth = (Road r1, Road r2) -> Integer.compare(r2.getNumOfLanes(), r1.getNumOfLanes());
-
-    public HashMap<Integer, PriorityQueue<Car>> getWaitingQueueMap() {
-        return waitingQueueMap;
-    }
 
     public Road(int id, int len, int topSpeed, int numOfLanes, int start, int end, boolean bidirectional) {
         this.id = id;
@@ -50,7 +37,7 @@ public class Road {
         this.bidirectional = bidirectional;
 
         initLaneList();
-        initWaitingQueue();
+        initCarSequence();
     }
 
     public Road(String line) {
@@ -64,7 +51,7 @@ public class Road {
         this.bidirectional = vars[6].equals("1");
 
         initLaneList();
-        initWaitingQueue();
+        initCarSequence();
     }
 
     private void initLaneList() {
@@ -83,12 +70,12 @@ public class Road {
         }
     }
 
-    private void initWaitingQueue() {
-        waitingQueueMap.clear();
-        // Priority queue
-        waitingQueueMap.put(getEnd(), new PriorityQueue<>(carComparator));
+    private void initCarSequence() {
+        carSequenceListMap.clear();
+        // initCarSequence
+        carSequenceListMap.put(getEnd(), new ArrayList<>());
         if (isBidirectional()) {
-            waitingQueueMap.put(getStart(), new PriorityQueue<>(carComparator));
+            carSequenceListMap.put(getStart(), new ArrayList<>());
         }
     }
 
@@ -112,15 +99,20 @@ public class Road {
                     // 前方有车 而且车道有位置
                     Car frontCar = lane.getCar(front);
                     CarState state = frontCar.getState();
+
                     int dist = frontCar.getPosition() - 1;
                     if (sv1 <= dist) {
-                        car.setPosition(sv1).setState(CarState.END);
+                        car.setPosition(sv1);
                     } else {
+                        // 在进入车辆的最大可行距离内有等待车辆阻挡，不出车。
+                        if (state == CarState.WAIT)
+                            return false;
+
                         // 前面车是处于END State
-                        car.setPosition(frontCar.getPosition() - 1).setState(CarState.END);
+                        car.setPosition(frontCar.getPosition() - 1);
                     }
                     lane.putCar(car, car.getPosition());
-                    car.setLaneId(lane.getId()).setCurrentSpeed(sv1);
+                    car.setLaneId(lane.getId()).setCurrentSpeed(sv1).setState(CarState.END).setRoadIdx(0);
                     return true;
                 } else
                     // 该车道已满
@@ -128,7 +120,7 @@ public class Road {
             } else {
                 // 车可以上路，设置状态
                 if (sv1 < this.getLen()) {
-                    car.setPosition(sv1).setState(CarState.END).setLaneId(lane.getId()).setCurrentSpeed(sv1);
+                    car.setPosition(sv1).setState(CarState.END).setLaneId(lane.getId()).setCurrentSpeed(sv1).setRoadIdx(0);
                     lane.putCar(car, car.getPosition());
                     return true;
                 } else {
@@ -197,40 +189,39 @@ public class Road {
         return this.getId() - r.getId();
     }
 
-    public void offerWaitingQueue(int crossRoadId) {
-        // 把车放入等待队列， 需要根据车道进行排序
+    public void createSequenceList(int crossRoadId) {
+        // 把车放入等待列表， 需要根据车道进行排序
 
-        PriorityQueue<Car> waitingQueue = waitingQueueMap.get(crossRoadId);
-        waitingQueue.clear();
+        ArrayList<Car> carSequenceList = carSequenceListMap.get(crossRoadId);
+        carSequenceList.clear();
         ArrayList<Lane> lanes = getLaneListBy(crossRoadId);
         lanes.forEach(
                 lane -> {
                     Map<Integer, Car> carMap = lane.getCarMap();
                     carMap.forEach((carId, car) -> {
-                        // 保证 waitingqueue 内没有重复
-                        if (car.getState() == CarState.WAIT && !waitingQueue.contains(car))
-                            waitingQueue.offer(car);
+                        // 保证没有重复
+                        if (car.getState() == CarState.WAIT && !carSequenceList.contains(car))
+                            carSequenceList.add(car);
                     });
                 }
         );
+        carSequenceList.sort(Car.priorityLaneIdComparator);
     }
 
-    public void updateWaitingQueue(int crossRoadId) {
-        //更新等待队列
-        PriorityQueue<Car> waitingQueue = waitingQueueMap.get(crossRoadId);
+    public void updateCarSequenceList(int crossRoadId) {
+        //更新等待列表
+        ArrayList<Car> carArrayList = getCarSequenceList(crossRoadId);
+        Iterator iterator = carArrayList.iterator();
 
-        if (waitingQueue == null)
-            return;
-
-        waitingQueue.clear();
-        offerWaitingQueue(crossRoadId);
-
+        while (iterator.hasNext()) {
+            Car car = (Car) iterator.next();
+            if (car.getState() != CarState.WAIT)
+                iterator.remove();
+        }
+        carArrayList.sort(Car.priorityLaneIdComparator);
 
     }
 
-    public void clearWaitingQueue() {
-        waitingQueueMap.forEach((cross, queue) -> queue.clear());
-    }
 
     public ArrayList<Lane> getLaneListBy(int crossRoadId) {
         if (crossRoadId == getEnd()) {
@@ -248,8 +239,8 @@ public class Road {
         return laneList;
     }
 
-    public PriorityQueue<Car> getWaitingQueue(int crossId) {
-        return waitingQueueMap.get(crossId);
+    public ArrayList<Car> getCarSequenceList(int crossId) {
+        return carSequenceListMap.get(crossId);
     }
 
     // 把车辆从路上移除
@@ -324,7 +315,7 @@ public class Road {
 
     public void resetRoadState() {
         initLaneList();
-        initWaitingQueue();
+        initCarSequence();
     }
 
     public double calculateLoad() {
@@ -414,7 +405,7 @@ public class Road {
         if (roadStates.getRoadId() != getId())
             System.err.println("Id not match !!! #restoreStates");
         initLaneList();
-        initWaitingQueue();
+        initCarSequence();
 
         ArrayList<Lane> lanes = getLaneList();
 
@@ -429,11 +420,11 @@ public class Road {
         // Restore Waiting queue
         if (
                 isBidirectional()) {
-            offerWaitingQueue(getStart());
-            offerWaitingQueue(getEnd());
+            createSequenceList(getStart());
+            createSequenceList(getEnd());
         } else
 
-            offerWaitingQueue(getEnd());
+            createSequenceList(getEnd());
 
     }
 
