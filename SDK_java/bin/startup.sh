@@ -14,7 +14,8 @@ JVM_OPT="$JVM_OPT $APP_HOME/bin/CodeCraft-2019-1.0.jar:$APP_HOME/bin/resources/"
 carPath=$1
 roadPath=$2
 crossPath=$3
-answerPath=$4
+presetAnswer=$4
+answerPath=$5
 echo "$JAVA $JVM_OPT com.huawei.Main $carPath $roadPath $crossPath $answerPath 2>&1"
-$JAVA  $JVM_OPT com.huawei.Main $carPath $roadPath $crossPath $answerPath 2>&1
+$JAVA  $JVM_OPT com.huawei.Main $carPath $roadPath $crossPath $presetAnswer $answerPath 2>&1
 exit
