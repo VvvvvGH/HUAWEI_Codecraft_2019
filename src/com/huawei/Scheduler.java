@@ -448,6 +448,7 @@ public class Scheduler {
         scheduler.stepUntilFinish();
         scheduler.printCarStates();
 
+
     }
 
     public void updateCarFromAnswer(String answer) {

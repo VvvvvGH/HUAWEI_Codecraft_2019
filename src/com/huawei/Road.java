@@ -421,6 +421,7 @@ public class Road {
     }
 
     public void runCarsInGarage(boolean priority, int crossId) {
+        garageMap.get(crossId).sort(Car.priorityTimeIdComparator);
 
         Iterator<Car> iterator = garageMap.get(crossId).iterator();
         while (iterator.hasNext()) {
@@ -428,10 +429,11 @@ public class Road {
             if (car.getState() != CarState.IN_GARAGE) {
                 System.err.println("ERROR: 车库里出现错误状态的车。" + car.getId());
             }
+
             // 仅允许高优先级的车出发
             if (priority) {
                 if (!car.isPriority())
-                    break;
+                    continue;
             }
             if (car.getStartTime() <= Scheduler.systemScheduleTime) { // 车辆到达开始时间
 
@@ -440,7 +442,11 @@ public class Road {
                     car.setActualStartTime(Scheduler.systemScheduleTime);
                     iterator.remove();
                 }
+                System.out.println("road "+getId());
+                System.out.println(priority);
+                System.out.println("car "+ car.getId()+" priority "+ car.isPriority() +" car start time "+car.getStartTime()+" ");
             }
+
 
 
         }

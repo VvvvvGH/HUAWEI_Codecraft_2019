@@ -71,16 +71,18 @@ public class CrossRoads implements Comparable<CrossRoads> {
                     }
                 }
 
-                //车到达目的地
-                if (carReachedDestination(car, road)) {
-                    road.updateLane(laneContainCar);
-                    // 上路优先车辆
-                    scheduler.driveCarInGarage(true);
-                    break;
-                }
+
 
                 // 车的行进方向是否有优先级
                 if (carHasPriorityToMove(car, road)) {
+                    //车到达目的地
+                    if (carReachedDestination(car, road)) {
+                        road.updateLane(laneContainCar);
+                        // 上路优先车辆
+                        scheduler.driveCarInGarage(true);
+                        break;
+                    }
+
                     //移车
                     if (moveCarToNextRoad(car)) {
                         road.updateLane(laneContainCar);
