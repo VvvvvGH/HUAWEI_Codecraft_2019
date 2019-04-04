@@ -2,7 +2,10 @@ package com.huawei;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.TreeMap;
 
 public class Scheduler {
 
@@ -19,7 +22,6 @@ public class Scheduler {
     public int deadLockCounter = 0;
 
     public static Long totalScheduleTime = 0L;
-    public static Long totalActualScheduleTime = 0L;
     public static Long systemScheduleTime = 0L;
     public static final int UNIT_TIME = 1;
 
@@ -53,7 +55,6 @@ public class Scheduler {
         if (carStateCounter.get(CarState.WAIT) == 0 && carStateCounter.get(CarState.END) == 0 && carStateCounter.get(CarState.IN_GARAGE) == 0) {
             System.out.println("系统调度时间: " + systemScheduleTime);
             System.out.println("所有车辆实际总调度时间: " + totalScheduleTime);
-            System.out.println("所有车辆总调度时间: " + totalActualScheduleTime);
         }
 
     }
@@ -88,7 +89,7 @@ public class Scheduler {
         driveAllCarOnRoad();
         // 优先上路车辆
         driveCarInGarage(true);
-        do {
+        while (!allCarInEndState()) {
             //全局车辆状态标识
             carStateChanged = false;
 
@@ -99,11 +100,10 @@ public class Scheduler {
 
             if (detectDeadLock())
                 return false;
-            printCarStates();
-        } while (!allCarInEndState());
-        // 非优先上路车辆
-        driveCarInGarage(false);
 
+        }
+        // 所有车辆上路
+        driveCarInGarage(false);
 
         return true;
     }
@@ -135,52 +135,9 @@ public class Scheduler {
     }
 
     public void driveCarInGarage(boolean highPriority) {
-        //      车辆到达实际出发时间，需要上路行驶。
-        //      如果存在同时多辆到达出发时间且初始道路相同，则按车辆编号由小到大的顺序上路行驶,进入道路车道编号依然由车道小的优先进入。
-        //      道路上没有车位可以上位，就等下一时刻上路
-        //      需要road处理车辆上路的逻辑
-        Iterator<Car> iterator = garage.iterator();
-        while (iterator.hasNext()) {
-            Car car = iterator.next();
-            if (car.getState() != CarState.IN_GARAGE) {
-                System.err.println("ERROR: 车库里出现错误状态的车。");
-                iterator.remove();
-                continue;
-            }
-            // 仅允许高优先级的车出发
-            if (highPriority) {
-                if (!car.isPriority())
-                    continue;
-            }
-
-            if (car.getStartTime() <= systemScheduleTime) { // 车辆到达开始时间
-
-                // 车的第一条路
-                Road road = roadMap.get(car.getPath().get(0));
-                Road nextRoad = roadMap.get(car.getPath().get(1));
-
-                int nextCrossRoadId = 0;
-                // 计算下一路口的方向
-                if (crossMap.get(road.getStart()) == crossMap.get(nextRoad.getStart()))
-                    nextCrossRoadId = road.getStart();
-                else if (crossMap.get(road.getEnd()) == crossMap.get(nextRoad.getStart()))
-                    nextCrossRoadId = road.getEnd();
-                else if (crossMap.get(road.getEnd()) == crossMap.get(nextRoad.getEnd()))
-                    nextCrossRoadId = road.getEnd();
-                else if (crossMap.get(road.getStart()) == crossMap.get(nextRoad.getEnd()))
-                    nextCrossRoadId = road.getStart();
-
-
-                if (road.putCarOnRoad(car, nextCrossRoadId)) {
-                    // 上路成功,从车库中删除车辆。否则车等待下一时刻才开。
-                    car.setActualStartTime(systemScheduleTime);
-                    iterator.remove();
-                }
-            } else if (car.getStartTime() < car.getPlanTime())
-                System.err.println("车不能早于计划时间出发!");
+        for (Road road : roadMap.values()) {
+            road.runCarsInGarage(highPriority);
         }
-
-        // TODO: Sort cars
     }
 
     private boolean allCarInEndState() {
@@ -217,11 +174,10 @@ public class Scheduler {
     }
 
     public void addToGarage(Car car) {
+//        carStateCounter.put(CarState.IN_GARAGE, carStateCounter.get(CarState.IN_GARAGE) == null ? 0 : (carStateCounter.get(CarState.IN_GARAGE) + 1));
 
         car.setState(CarState.IN_GARAGE);
-        garage.add(car);
-        // 对车库内的车按优先进行排序
-        Collections.sort(garage, Car.priorityTimeIdComparator);
+        roadMap.get(car.getPath().get(0)).addToGarage(car);
     }
 
     public void addAllToGarage(ArrayList<Car> cars) {
@@ -240,7 +196,7 @@ public class Scheduler {
     public void resetCarStatusCounter() {
         carStateCounter.clear();
         carStateCounter.put(CarState.WAIT, 0);
-        carStateCounter.put(CarState.IN_GARAGE, carMap.size());
+        carStateCounter.put(CarState.IN_GARAGE, 0);
         carStateCounter.put(CarState.OFF_ROAD, 0);
         carStateCounter.put(CarState.END, 0);
     }
@@ -258,7 +214,6 @@ public class Scheduler {
 
         systemScheduleTime = 0L;
         totalScheduleTime = 0L;
-        totalActualScheduleTime = 0L;
 
         carMap.forEach((carId, car) -> car.resetCarState());
         roadMap.forEach((roadId, road) -> road.resetRoadState());
@@ -276,9 +231,6 @@ public class Scheduler {
         return UNIT_TIME;
     }
 
-    public static Long getTotalActualScheduleTime() {
-        return totalActualScheduleTime;
-    }
 
     public TreeMap<Integer, CrossRoads> getCrossMap() {
         return crossMap;
@@ -392,7 +344,6 @@ public class Scheduler {
         stateMap.put("garage", garageToSave);
 
         stateMap.put("totalScheduleTime", totalScheduleTime);
-        stateMap.put("totalActualScheduleTime", totalActualScheduleTime);
         stateMap.put("systemScheduleTime", systemScheduleTime);
         stateMap.put("carStateChanged", carStateChanged);
         stateMap.put("deadLockCounter", deadLockCounter);
@@ -428,7 +379,6 @@ public class Scheduler {
 
 
         totalScheduleTime = (Long) stateMap.get("totalScheduleTime");
-        totalActualScheduleTime = (Long) stateMap.get("totalActualScheduleTime");
         systemScheduleTime = (Long) stateMap.get("systemScheduleTime");
         carStateChanged = (boolean) stateMap.get("carStateChanged");
         deadLockCounter = (int) stateMap.get("deadLockCounter");
@@ -443,11 +393,11 @@ public class Scheduler {
 
     public static void main(String[] args) {
 
-
-        ArrayList<String> cars = Main.readFile("/home/cheng/PycharmProjects/huawei2019_Test/data/1-map-exam-1/car.txt");
-        ArrayList<String> roads = Main.readFile("/home/cheng/PycharmProjects/huawei2019_Test/data/1-map-exam-1/road.txt");
-        ArrayList<String> crossRoads = Main.readFile("/home/cheng/PycharmProjects/huawei2019_Test/data/1-map-exam-1/cross.txt");
-        ArrayList<String> answers = Main.readFile("/home/cheng/PycharmProjects/huawei2019_Test/data/1-map-exam-1/answer.txt");
+        ArrayList<String> cars = Main.readFile("/home/cheng/IdeaProjects/HUAWEI_Codecraft_2019/SDK_java/bin/config/car.txt");
+        ArrayList<String> roads = Main.readFile("/home/cheng/IdeaProjects/HUAWEI_Codecraft_2019/SDK_java/bin/config/road.txt");
+        ArrayList<String> crossRoads = Main.readFile("/home/cheng/IdeaProjects/HUAWEI_Codecraft_2019/SDK_java/bin/config/cross.txt");
+        ArrayList<String> presetAnswers = Main.readFile("/home/cheng/IdeaProjects/HUAWEI_Codecraft_2019/SDK_java/bin/config/presetAnswer.txt");
+        ArrayList<String> answers = Main.readFile("/home/cheng/IdeaProjects/HUAWEI_Codecraft_2019/SDK_java/bin/config/answer.txt");
 
         Scheduler scheduler = new Scheduler();
 
@@ -474,6 +424,20 @@ public class Scheduler {
                 }
         );
 
+//        presetAnswers.forEach(
+//                answerLine -> {
+//                    String[] vars = answerLine.split(",");
+//                    int carId = Integer.parseInt(vars[0]);
+//                    Car car = scheduler.getCar(carId);
+//                    car.setStartTime(Integer.parseInt(vars[1]));
+//                    for (int i = 2; i < vars.length; i++) {
+//                        if (Integer.parseInt(vars[i]) > 0) {
+//                            car.addPath((Integer.parseInt(vars[i])));
+//                        }
+//                    }
+//                    scheduler.addToGarage(car);
+//                }
+//        );
         answers.forEach(
                 answer -> {
                     scheduler.updateCarFromAnswer(answer);
@@ -483,7 +447,6 @@ public class Scheduler {
 
         scheduler.stepUntilFinish();
         scheduler.printCarStates();
-
 
     }
 

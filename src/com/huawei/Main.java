@@ -83,12 +83,12 @@ public class Main {
 
 
         trafficMap.initGraphEdge();
-        trafficMap.scheduleTest(1);
+        trafficMap.scheduleTest(10);
 
 
         //打印结果，无需打印预置车辆
         ArrayList<String> answer = new ArrayList<>();
-        String answerPath = args[3];
+        String answerPath = args[4];
         trafficMap.getCars().forEach(
                 (carId, car) -> {
                     if (!car.isPreset()) {

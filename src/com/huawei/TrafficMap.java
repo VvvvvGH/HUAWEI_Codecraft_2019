@@ -148,6 +148,20 @@ public class TrafficMap {
         });
     }
 
+    public Long presetCarTest(){
+        scheduler.reset();
+
+        // 先把优先车辆放入车库
+        cars.forEach((carId, car) -> {
+            if (car.isPreset()) {
+                scheduler.addToGarage(car);
+            }
+        });
+
+        scheduler.stepUntilFinish();
+        scheduler.printCarStates();
+        return -1L;
+    }
 
     public Long scheduleTest(int carFlowLimit) {
         scheduler.reset();
@@ -157,8 +171,8 @@ public class TrafficMap {
 
 
         // 先把优先车辆放入车库
-        cars.forEach((carId,car)->{
-            if(car.isPreset()){
+        cars.forEach((carId, car) -> {
+            if (car.isPreset()) {
                 scheduler.addToGarage(car);
             }
         });
@@ -201,11 +215,6 @@ public class TrafficMap {
                         carPlanTime.put(car.getId(), carPlanTime.get(car.getId()) + 1);
                         continue;
                     }
-//                    for (int roadId : car.getPath()) {
-//                        if (roads.get(roadId).calculateLoad() > 0.90) {
-//                            hasBusyPath = true;
-//                        }
-//                    }
 
 
                     car.setStartTime(time);
@@ -216,6 +225,7 @@ public class TrafficMap {
                 }
                 if (!scheduler.step())
                     return -1L;
+                scheduler.printCarStates();
                 updateGraphEdge();
             }
 
@@ -319,7 +329,6 @@ public class TrafficMap {
     }
 
 
-
     public void pathClassification() {
         priorityQueue.clear();
 
@@ -375,7 +384,11 @@ public class TrafficMap {
         directionMap.put(0, new PriorityQueue<>());
 
         this.getCars().forEach(
-                (carId, car) -> priorityQueue.offer(car)
+                (carId, car) -> {
+                    if (!car.isPreset()) {
+                        priorityQueue.offer(car);
+                    }
+                }
         );
 
         while (!priorityQueue.isEmpty()) {

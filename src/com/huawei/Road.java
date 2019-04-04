@@ -20,12 +20,9 @@ public class Road {
     // Key 为路的出口路口Id
     private HashMap<Integer, ArrayList<Car>> carSequenceListMap = new HashMap<>();
 
+    // Key 为路的出口路口Id
+    private HashMap<Integer, ArrayList<Car>> garageMap = new HashMap<>();
 
-    public static Comparator<Road> roadCompareByLength = (Road r1, Road r2) -> Integer.compare(r2.getLen(), r1.getLen());
-
-    public static Comparator<Road> roadCompareBySpeed = (Road r1, Road r2) -> Integer.compare(r2.getTopSpeed(), r1.getTopSpeed());
-
-    public static Comparator<Road> roadCompareByWidth = (Road r1, Road r2) -> Integer.compare(r2.getNumOfLanes(), r1.getNumOfLanes());
 
     public Road(int id, int len, int topSpeed, int numOfLanes, int start, int end, boolean bidirectional) {
         this.id = id;
@@ -38,6 +35,7 @@ public class Road {
 
         initLaneList();
         initCarSequence();
+        initGarage();
     }
 
     public Road(String line) {
@@ -52,6 +50,7 @@ public class Road {
 
         initLaneList();
         initCarSequence();
+        initGarage();
     }
 
     private void initLaneList() {
@@ -70,6 +69,16 @@ public class Road {
         }
     }
 
+    private void initGarage() {
+        garageMap.clear();
+        // initCarSequence
+        garageMap.put(getEnd(), new ArrayList<>());
+        if (isBidirectional()) {
+            garageMap.put(getStart(), new ArrayList<>());
+        }
+    }
+
+
     private void initCarSequence() {
         carSequenceListMap.clear();
         // initCarSequence
@@ -78,6 +87,7 @@ public class Road {
             carSequenceListMap.put(getStart(), new ArrayList<>());
         }
     }
+
 
     // 出发的车
     public boolean putCarOnRoad(Car car, int nextCrossRoadId) {
@@ -193,33 +203,28 @@ public class Road {
         // 把车放入等待列表， 需要根据车道进行排序
 
         ArrayList<Car> carSequenceList = carSequenceListMap.get(crossRoadId);
+        // 错误方向的调用
+        if (carSequenceList == null) {
+//            System.err.println("createSequenceList#错误方向的调用");
+            return;
+        }
+
         carSequenceList.clear();
         ArrayList<Lane> lanes = getLaneListBy(crossRoadId);
         lanes.forEach(
                 lane -> {
                     Map<Integer, Car> carMap = lane.getCarMap();
-                    carMap.forEach((carId, car) -> {
-                        // 保证没有重复
-                        if (car.getState() == CarState.WAIT && !carSequenceList.contains(car))
+                    List<Integer> list = lane.getDescendingPositionList();
+                    if (list.size() != 0) {
+                        Car car = carMap.get(list.get(0));
+                        // 找到最前面WAIT状态的车
+                        if (car.getState() == CarState.WAIT) {
                             carSequenceList.add(car);
-                    });
+                        }
+                    }
                 }
         );
         carSequenceList.sort(Car.priorityLaneIdComparator);
-    }
-
-    public void updateCarSequenceList(int crossRoadId) {
-        //更新等待列表
-        ArrayList<Car> carArrayList = getCarSequenceList(crossRoadId);
-        Iterator iterator = carArrayList.iterator();
-
-        while (iterator.hasNext()) {
-            Car car = (Car) iterator.next();
-            if (car.getState() != CarState.WAIT)
-                iterator.remove();
-        }
-        carArrayList.sort(Car.priorityLaneIdComparator);
-
     }
 
 
@@ -240,7 +245,25 @@ public class Road {
     }
 
     public ArrayList<Car> getCarSequenceList(int crossId) {
+        createSequenceList(crossId);
         return carSequenceListMap.get(crossId);
+    }
+
+    public void addToGarage(Car car) {
+        car.setState(CarState.IN_GARAGE);
+        if (car.getFrom() == getStart()) {
+            if (!garageMap.get(getEnd()).contains(car)) {
+                garageMap.get(getEnd()).add(car);
+                garageMap.get(getEnd()).sort(Car.priorityTimeIdComparator);
+            }
+        } else if (car.getFrom() == getEnd()) {
+            if (!garageMap.get(getStart()).contains(car)) {
+                garageMap.get(getStart()).add(car);
+                garageMap.get(getEnd()).sort(Car.priorityTimeIdComparator);
+            }
+        } else
+            System.err.println("addToGarage# unexpected direction");
+
     }
 
     // 把车辆从路上移除
@@ -391,6 +414,38 @@ public class Road {
         return laneContainCar;
     }
 
+    public void runCarsInGarage(boolean priority) {
+        runCarsInGarage(priority, getEnd());
+        if (isBidirectional())
+            runCarsInGarage(priority, getStart());
+    }
+
+    public void runCarsInGarage(boolean priority, int crossId) {
+
+        Iterator<Car> iterator = garageMap.get(crossId).iterator();
+        while (iterator.hasNext()) {
+            Car car = iterator.next();
+            if (car.getState() != CarState.IN_GARAGE) {
+                System.err.println("ERROR: 车库里出现错误状态的车。" + car.getId());
+            }
+            // 仅允许高优先级的车出发
+            if (priority) {
+                if (!car.isPriority())
+                    break;
+            }
+            if (car.getStartTime() <= Scheduler.systemScheduleTime) { // 车辆到达开始时间
+
+                if (putCarOnRoad(car, crossId)) {
+                    // 上路成功,从车库中删除车辆。否则车等待下一时刻才开。
+                    car.setActualStartTime(Scheduler.systemScheduleTime);
+                    iterator.remove();
+                }
+            }
+
+
+        }
+    }
+
     public RoadStates dumpStates() {
         ArrayList<Lane> lanes = getLaneList();
         HashMap<Integer, ArrayList<Integer>> carsMap = new HashMap<>();
@@ -418,12 +473,10 @@ public class Road {
 
         }
         // Restore Waiting queue
-        if (
-                isBidirectional()) {
+        if (isBidirectional()) {
             createSequenceList(getStart());
             createSequenceList(getEnd());
         } else
-
             createSequenceList(getEnd());
 
     }

@@ -4,6 +4,7 @@ package com.huawei;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Objects;
 
 public class Car implements Comparable<Car> {
     private int id;
@@ -50,20 +51,19 @@ public class Car implements Comparable<Car> {
     public static Comparator<Car> priorityLaneIdComparator = new Comparator<Car>() {
         @Override
         public int compare(Car car1, Car car2) {
-
             int i1;
             int i2;
             if (car1.isPriority())
-                i1 = car1.getPosition() * 1000 - car1.getLaneId();
-            else
                 i1 = car1.getPosition() * 100000 - car1.getLaneId();
+            else
+                i1 = car1.getPosition() * 1000 - car1.getLaneId();
 
             if (car2.isPriority())
-                i2 = car2.getPosition() * 1000 - car2.getLaneId();
-            else
                 i2 = car2.getPosition() * 100000 - car2.getLaneId();
+            else
+                i2 = car2.getPosition() * 1000 - car2.getLaneId();
 
-            return Integer.compare(i1, i2);
+            return Integer.compare(i2, i1);
         }
     };
 
@@ -88,8 +88,6 @@ public class Car implements Comparable<Car> {
         this.priority = Integer.parseInt(vars[5]) == 1;
         this.preset = Integer.parseInt(vars[6]) == 1;
         setState(CarState.IN_GARAGE);
-        if (id==10001)
-            System.out.println(line);
     }
 
     public Car addPath(int roadId) {
@@ -282,7 +280,8 @@ public class Car implements Comparable<Car> {
 
     public void resetCarState() {
         this.currentSpeed = 0;
-        this.startTime = -1;
+        if(!isPreset())
+            this.startTime = -1;
         this.endTime = -1;
         this.laneId = -1;
         this.roadIdx = -1;
