@@ -66,10 +66,13 @@ public class Main {
                     String[] vars = answerLine.split(",");
                     int carId = Integer.parseInt(vars[0]);
                     Car car = scheduler.getCar(carId);
+                    car.clearPath();
                     car.setStartTime(Integer.parseInt(vars[1]));
-                    for (int i = 2; i < vars.length; i++) {
-                        if (Integer.parseInt(vars[i]) > 0) {
-                            car.addPath((Integer.parseInt(vars[i])));
+                    if (car.getPath().size() == 0) {
+                        for (int i = 2; i < vars.length; i++) {
+                            if (Integer.parseInt(vars[i]) > 0) {
+                                car.addPath((Integer.parseInt(vars[i])));
+                            }
                         }
                     }
                 }
@@ -83,7 +86,23 @@ public class Main {
 
 
         trafficMap.initGraphEdge();
-        trafficMap.scheduleTest(10);
+//
+//        trafficMap.preScheduleDirection(1);
+//        trafficMap.preScheduleDirection(5);
+
+
+        trafficMap.preSchedule3(15);
+
+        trafficMap.preSchedule3(15);
+
+        trafficMap.preSchedule3(15);
+
+        trafficMap.preSchedule3(15);
+
+        for (int i = 30; i < 50; i++) {
+            trafficMap.scheduleTest2(i);
+        }
+
 
 
         //打印结果，无需打印预置车辆

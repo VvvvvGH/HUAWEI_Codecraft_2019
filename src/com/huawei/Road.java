@@ -205,7 +205,6 @@ public class Road {
         ArrayList<Car> carSequenceList = carSequenceListMap.get(crossRoadId);
         // 错误方向的调用
         if (carSequenceList == null) {
-//            System.err.println("createSequenceList#错误方向的调用");
             return;
         }
 
@@ -259,7 +258,7 @@ public class Road {
         } else if (car.getFrom() == getEnd()) {
             if (!garageMap.get(getStart()).contains(car)) {
                 garageMap.get(getStart()).add(car);
-                garageMap.get(getEnd()).sort(Car.priorityTimeIdComparator);
+                garageMap.get(getStart()).sort(Car.priorityTimeIdComparator);
             }
         } else
             System.err.println("addToGarage# unexpected direction");
@@ -339,6 +338,7 @@ public class Road {
     public void resetRoadState() {
         initLaneList();
         initCarSequence();
+        initGarage();
     }
 
     public double calculateLoad() {
@@ -421,7 +421,8 @@ public class Road {
     }
 
     public void runCarsInGarage(boolean priority, int crossId) {
-        garageMap.get(crossId).sort(Car.priorityTimeIdComparator);
+        if(garageMap.get(crossId).size()==0)
+            return;
 
         Iterator<Car> iterator = garageMap.get(crossId).iterator();
         while (iterator.hasNext()) {
@@ -442,9 +443,6 @@ public class Road {
                     car.setActualStartTime(Scheduler.systemScheduleTime);
                     iterator.remove();
                 }
-                System.out.println("road "+getId());
-                System.out.println(priority);
-                System.out.println("car "+ car.getId()+" priority "+ car.isPriority() +" car start time "+car.getStartTime()+" ");
             }
 
 

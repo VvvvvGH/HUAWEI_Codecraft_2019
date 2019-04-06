@@ -10,7 +10,6 @@ public class CrossRoads implements Comparable<CrossRoads> {
     private int id;
     // 这个flag 表明该次schedule状态是否发生变化，默认是true。 每次调用schedule()就会先设false，如果有变化就设置true
     private boolean stateChanged = true;
-    private boolean internalStateChanged = true;
 
     private HashMap<Integer, RoadPosition> roadDirection = new HashMap<>();
     private TreeMap<Integer, Road> roadTreeMap = new TreeMap<>();
@@ -63,14 +62,7 @@ public class CrossRoads implements Comparable<CrossRoads> {
             while ((car = fetchCarFromList(road)) != null) {
 
                 // 优先队列里每一辆车
-                Lane laneContainCar = null;
-                for (Lane lane : road.getLaneList()) {
-                    if (lane.getCarMap().containsValue(car)) {
-                        laneContainCar = lane;
-                        break;
-                    }
-                }
-
+                Lane laneContainCar = road.getLaneListBy(getId()).get(car.getLaneId()-1);
 
 
                 // 车的行进方向是否有优先级
@@ -80,7 +72,7 @@ public class CrossRoads implements Comparable<CrossRoads> {
                         road.updateLane(laneContainCar);
                         // 上路优先车辆
                         scheduler.driveCarInGarage(true);
-                        break;
+                        continue;
                     }
 
                     //移车
@@ -128,7 +120,6 @@ public class CrossRoads implements Comparable<CrossRoads> {
             Scheduler.totalScheduleTime += car.getEndTime() - car.getPlanTime();
             road.removeCarFromRoad(car);
             stateChanged = true;
-            internalStateChanged = true;
             return true;
         }
         return false;
@@ -255,7 +246,6 @@ public class CrossRoads implements Comparable<CrossRoads> {
                 laneContainCarOnFrom.updateCar(car, car.getPosition(), positionOnNextRoad);
             }
             car.setState(CarState.END);
-            internalStateChanged = true;
             return true;
         }
 
@@ -285,10 +275,8 @@ public class CrossRoads implements Comparable<CrossRoads> {
                     laneContainCarOnFrom.updateCar(car, car.getPosition(), positionOnNextRoad);
                 }
                 car.setState(CarState.END);
-                internalStateChanged = true;
                 return true;
             } else if (firstCarState == CarState.WAIT) {
-                internalStateChanged = false;
                 return false;
             } else {
                 System.err.println("moveCarToNextRoad#error#unexception state");
@@ -312,7 +300,6 @@ public class CrossRoads implements Comparable<CrossRoads> {
                     fromRoad.removeCarFromRoad(car);
                     fromRoad.getCarSequenceList(getId()).remove(car);
                     car.setCurrentSpeed(v2).setState(CarState.END).setRoadIdx(car.getRoadIdx() + 1);
-                    internalStateChanged = true;
                     return true;
                 } else {
                     System.err.println("putCar failed");
@@ -329,7 +316,6 @@ public class CrossRoads implements Comparable<CrossRoads> {
                         fromRoad.removeCarFromRoad(car);
                         fromRoad.getCarSequenceList(getId()).remove(car);
                         car.setCurrentSpeed(v2).setState(CarState.END).setRoadIdx(car.getRoadIdx() + 1);
-                        internalStateChanged = true;
                         return true;
                     } else {
                         System.err.println("putCar failed");
@@ -342,7 +328,6 @@ public class CrossRoads implements Comparable<CrossRoads> {
                             fromRoad.removeCarFromRoad(car);
                             fromRoad.getCarSequenceList(getId()).remove(car);
                             car.setCurrentSpeed(v2).setState(CarState.END).setRoadIdx(car.getRoadIdx() + 1);
-                            internalStateChanged = true;
                             return true;
                         } else {
                             System.err.println("putCar failed");

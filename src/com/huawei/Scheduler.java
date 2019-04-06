@@ -3,7 +3,6 @@ package com.huawei;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.TreeMap;
 
@@ -12,7 +11,6 @@ public class Scheduler {
     private TreeMap<Integer, CrossRoads> crossMap = new TreeMap<>();
     private TreeMap<Integer, Road> roadMap = new TreeMap<>();
     private TreeMap<Integer, Car> carMap = new TreeMap<>();
-    private ArrayList<Car> garage = new ArrayList<>();
 
     private HashMap<Long, HashMap<String, Object>> timeStateMap = new HashMap<>();
 
@@ -32,22 +30,6 @@ public class Scheduler {
         put(CarState.END, 0);
         put(CarState.IN_GARAGE, 0);
     }};
-
-    public void runAndPrintResult() {
-        // Add car to garage
-        garage.addAll(carMap.values());
-        // 对车库内的车按ID进行排序
-        Collections.sort(garage, Car.priorityTimeIdComparator);
-
-
-        while (carStateCounter.get(CarState.OFF_ROAD) != carMap.size()) {
-
-            System.out.printf("Car State at time %d : OFF_ROAD: %d IN_GARAGE: %d WAIT: %d END: %d  \n", systemScheduleTime, carStateCounter.get(CarState.OFF_ROAD), carStateCounter.get(CarState.IN_GARAGE), carStateCounter.get(CarState.WAIT), carStateCounter.get(CarState.END));
-
-            step();
-        }
-        System.out.println("SystemScheduleTime: " + getSystemScheduleTime());
-    }
 
     public void printCarStates() {
 
@@ -174,24 +156,9 @@ public class Scheduler {
     }
 
     public void addToGarage(Car car) {
-//        carStateCounter.put(CarState.IN_GARAGE, carStateCounter.get(CarState.IN_GARAGE) == null ? 0 : (carStateCounter.get(CarState.IN_GARAGE) + 1));
-
-        car.setState(CarState.IN_GARAGE);
         roadMap.get(car.getPath().get(0)).addToGarage(car);
     }
 
-    public void addAllToGarage(ArrayList<Car> cars) {
-        cars.forEach(car -> {
-            car.setState(CarState.IN_GARAGE);
-            garage.add(car);
-        });
-        // 对车库内的车按优先进行排序
-        Collections.sort(garage, Car.priorityTimeIdComparator);
-    }
-
-    public void clearGarage() {
-        garage.clear();
-    }
 
     public void resetCarStatusCounter() {
         carStateCounter.clear();
@@ -210,7 +177,7 @@ public class Scheduler {
         // 重置调度器所有参数的状态
         resetCarStatusCounter();
         resetDeadlockCounter();
-        clearGarage();
+
 
         systemScheduleTime = 0L;
         totalScheduleTime = 0L;
@@ -244,9 +211,6 @@ public class Scheduler {
         return carMap;
     }
 
-    public ArrayList<Car> getGarage() {
-        return garage;
-    }
 
     public void printCarsOnRoad() {
         carMap.forEach((carId, car) -> {
@@ -339,7 +303,7 @@ public class Scheduler {
 
 
         ArrayList<Car> garageToSave = new ArrayList<>();
-        garageToSave.addAll(garage);
+
 
         stateMap.put("garage", garageToSave);
 
@@ -373,10 +337,6 @@ public class Scheduler {
             roadMap.get(roadState.getRoadId()).restoreStates(roadState);
         });
 
-        garage = (ArrayList<Car>) stateMap.get("garage");
-        // 对车库内的车按ID进行排序
-        Collections.sort(garage, Car.priorityTimeIdComparator);
-
 
         totalScheduleTime = (Long) stateMap.get("totalScheduleTime");
         systemScheduleTime = (Long) stateMap.get("systemScheduleTime");
@@ -398,6 +358,8 @@ public class Scheduler {
         ArrayList<String> crossRoads = Main.readFile("/home/cheng/IdeaProjects/HUAWEI_Codecraft_2019/SDK_java/bin/config/cross.txt");
         ArrayList<String> presetAnswers = Main.readFile("/home/cheng/IdeaProjects/HUAWEI_Codecraft_2019/SDK_java/bin/config/presetAnswer.txt");
         ArrayList<String> answers = Main.readFile("/home/cheng/IdeaProjects/HUAWEI_Codecraft_2019/SDK_java/bin/config/answer.txt");
+
+        answers.addAll(presetAnswers);
 
         Scheduler scheduler = new Scheduler();
 
@@ -430,8 +392,10 @@ public class Scheduler {
 //                    int carId = Integer.parseInt(vars[0]);
 //                    Car car = scheduler.getCar(carId);
 //                    car.setStartTime(Integer.parseInt(vars[1]));
-//                    for (int i = 2; i < vars.length; i++) {
-//                        if (Integer.parseInt(vars[i]) > 0) {
+//                    car.clearPath();
+//
+//                    if (car.getPath().size() == 0) {
+//                        for (int i = 2; i < vars.length; i++) {
 //                            car.addPath((Integer.parseInt(vars[i])));
 //                        }
 //                    }
@@ -457,9 +421,11 @@ public class Scheduler {
         // 更新车辆行驶信息
         Car car = carMap.get(carId);
         car.setStartTime(Integer.parseInt(vars[1]));
-        for (int i = 2; i < vars.length; i++) {
-            if (Integer.parseInt(vars[i]) > 0) {
-                car.addPath((Integer.parseInt(vars[i])));
+        if (car.getPath().size() == 0) {
+            for (int i = 2; i < vars.length; i++) {
+                if (Integer.parseInt(vars[i]) > 0) {
+                    car.addPath((Integer.parseInt(vars[i])));
+                }
             }
         }
         // 把车加入车库
