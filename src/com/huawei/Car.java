@@ -1,11 +1,9 @@
 package com.huawei;
 
 
-import java.nio.charset.CoderMalfunctionError;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Objects;
 
 public class Car implements Comparable<Car> {
     private int id;
@@ -71,7 +69,7 @@ public class Car implements Comparable<Car> {
     public static Comparator<Car> speedComparator = new Comparator<Car>() {
         @Override
         public int compare(Car car1, Car car2) {
-            return Integer.compare(car2.getTopSpeed(),car1.getTopSpeed());
+            return Integer.compare(car2.getTopSpeed(), car1.getTopSpeed());
         }
     };
 
@@ -81,9 +79,8 @@ public class Car implements Comparable<Car> {
         this.to = to;
         this.topSpeed = topSpeed;
         this.planTime = planTime;
-        this.priority = priority;
+        setPriority(priority);
         this.preset = preset;
-//        setState(CarState.IN_GARAGE);
     }
 
     public Car(String line) {
@@ -93,9 +90,8 @@ public class Car implements Comparable<Car> {
         this.to = Integer.parseInt(vars[2]);
         this.topSpeed = Integer.parseInt(vars[3]);
         this.planTime = Integer.parseInt(vars[4]);
-        this.priority = Integer.parseInt(vars[5]) == 1;
+        setPriority(Integer.parseInt(vars[5]) == 1);
         this.preset = Integer.parseInt(vars[6]) == 1;
-//        setState(CarState.IN_GARAGE);
     }
 
     public Car addPath(int roadId) {
@@ -103,7 +99,7 @@ public class Car implements Comparable<Car> {
         return this;
     }
 
-    public void clearPath(){
+    public void clearPath() {
         path.clear();
     }
 
@@ -243,6 +239,17 @@ public class Car implements Comparable<Car> {
     }
 
     public Car setCurrentSpeed(int currentSpeed) {
+        if(Scheduler.maxSpeedOfAllCars<currentSpeed)
+            Scheduler.maxSpeedOfAllCars=currentSpeed;
+        if(Scheduler.minSpeedOfAllCars>currentSpeed)
+            Scheduler.minSpeedOfAllCars=currentSpeed;
+        if(isPriority()){
+            if(Scheduler.maxSpeedOfPriorityCars<currentSpeed)
+                Scheduler.maxSpeedOfPriorityCars=currentSpeed;
+            if(Scheduler.minSpeedOfPriorityCars>currentSpeed)
+                Scheduler.minSpeedOfPriorityCars=currentSpeed;
+        }
+
         this.currentSpeed = currentSpeed;
         return this;
     }
@@ -293,7 +300,7 @@ public class Car implements Comparable<Car> {
 
     public void resetCarState() {
         this.currentSpeed = 0;
-        if(!isPreset())
+        if (!isPreset())
             this.startTime = -1;
         this.endTime = -1;
         this.laneId = -1;
@@ -433,6 +440,8 @@ public class Car implements Comparable<Car> {
     }
 
     public Car setPriority(boolean priority) {
+        if (priority)
+            Scheduler.numOfPriorityCars++;
         this.priority = priority;
         return this;
     }

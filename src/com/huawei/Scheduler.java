@@ -2,9 +2,8 @@ package com.huawei;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.TreeMap;
+import java.text.DecimalFormat;
+import java.util.*;
 
 public class Scheduler {
 
@@ -21,7 +20,18 @@ public class Scheduler {
 
     public static Long totalScheduleTime = 0L;
     public static Long systemScheduleTime = 0L;
+    public static Long specialScheduleTime = 0L;
+    public static Long totalSpecialScheduleTime = 0L;
     public static final int UNIT_TIME = 1;
+
+    // factor information
+    public static Long numOfPriorityCars = 0L;
+
+    public static int maxSpeedOfAllCars = 0;
+    public static int minSpeedOfAllCars = 999;
+    public static int maxSpeedOfPriorityCars = 0;
+    public static int minSpeedOfPriorityCars = 999;
+
 
     //全局车辆状态统计
     public static HashMap<CarState, Integer> carStateCounter = new HashMap<CarState, Integer>() {{
@@ -35,8 +45,59 @@ public class Scheduler {
 
         System.out.printf("Car State at time %d : OFF_ROAD: %d IN_GARAGE: %d WAIT: %d END: %d  \n", systemScheduleTime, carStateCounter.get(CarState.OFF_ROAD), carStateCounter.get(CarState.IN_GARAGE), carStateCounter.get(CarState.WAIT), carStateCounter.get(CarState.END));
         if (carStateCounter.get(CarState.WAIT) == 0 && carStateCounter.get(CarState.END) == 0 && carStateCounter.get(CarState.IN_GARAGE) == 0) {
-            System.out.println("系统调度时间: " + systemScheduleTime);
-            System.out.println("所有车辆实际总调度时间: " + totalScheduleTime);
+            long minPlanTimeOfAllCars = 999;
+            long maxPlanTimeOfAllCars = 0;
+            long minPlanTimeOfPriorityCars = 999;
+            long maxPlanTimeOfPriorityCars = 0;
+
+
+            Set allCarStartDistribute = new HashSet();
+            Set allCarEndDistribute = new HashSet();
+
+            Set priorityCarStartDistribute = new HashSet();
+            Set priorityCarEndDistribute = new HashSet();
+
+
+            for (Car car : carMap.values()) {
+                if (car.isPriority() && car.getPlanTime() < minPlanTimeOfPriorityCars)
+                    minPlanTimeOfPriorityCars = car.getPlanTime();
+                if (car.getPlanTime() < minPlanTimeOfAllCars)
+                    minPlanTimeOfAllCars = car.getPlanTime();
+
+                if (car.isPriority() && car.getPlanTime() > maxPlanTimeOfPriorityCars)
+                    maxPlanTimeOfPriorityCars = car.getPlanTime();
+                if (car.getPlanTime() > maxPlanTimeOfAllCars)
+                    maxPlanTimeOfAllCars = car.getPlanTime();
+
+                allCarStartDistribute.add(car.getFrom());
+                allCarEndDistribute.add(car.getTo());
+                if (car.isPriority()) {
+                    priorityCarStartDistribute.add(car.getFrom());
+                    priorityCarEndDistribute.add(car.getTo());
+                }
+            }
+
+            DecimalFormat df = new DecimalFormat("0.00000");
+
+            double factorA = (carMap.size() / (numOfPriorityCars * 1.0)) * 0.05 +
+                    ((maxSpeedOfAllCars * 1.0 / minSpeedOfAllCars) / (maxSpeedOfPriorityCars * 1.0 / minSpeedOfPriorityCars)) * 0.2375 +
+                    ((maxPlanTimeOfAllCars * 1.0 / minPlanTimeOfAllCars) / (maxPlanTimeOfPriorityCars * 1.0 / minPlanTimeOfPriorityCars)) * 0.2375 +
+                    (allCarStartDistribute.size() * 1.0 / priorityCarStartDistribute.size()) * 0.2375 +
+                    (allCarEndDistribute.size() * 1.0 / priorityCarEndDistribute.size()) * 0.2375;
+
+            double factorB = (carMap.size() / (numOfPriorityCars * 1.0)) * 0.8 +
+                    ((maxSpeedOfAllCars * 1.0 / minSpeedOfAllCars) / (maxSpeedOfPriorityCars * 1.0 / minSpeedOfPriorityCars)) * 0.05 +
+                    ((maxPlanTimeOfAllCars * 1.0 / minPlanTimeOfAllCars) / (maxPlanTimeOfPriorityCars * 1.0 / minPlanTimeOfPriorityCars)) * 0.05 +
+                    (allCarStartDistribute.size() * 1.0 / priorityCarStartDistribute.size()) * 0.05 +
+                    (allCarEndDistribute.size() * 1.0 / priorityCarEndDistribute.size()) * 0.05;
+
+
+            System.out.println("优先车辆调度时间: " + (specialScheduleTime - minPlanTimeOfPriorityCars));
+            System.out.println("优先车辆总调度时间: " + totalSpecialScheduleTime);
+            System.out.println("原系统调度时间: " + systemScheduleTime);
+            System.out.println("原所有车辆实际总调度时间: " + totalScheduleTime);
+            System.out.println("系统调度时间: " + (systemScheduleTime + Double.parseDouble(df.format(factorA)) * specialScheduleTime));
+            System.out.println("所有车辆实际总调度时间: " + (totalScheduleTime + Double.parseDouble(df.format(factorB)) * totalSpecialScheduleTime));
         }
 
     }

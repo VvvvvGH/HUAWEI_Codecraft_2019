@@ -60,7 +60,7 @@ public class CrossRoads implements Comparable<CrossRoads> {
             while ((car = fetchCarFromList(road)) != null) {
 
                 // 优先队列里每一辆车
-                Lane laneContainCar = road.getLaneListBy(getId()).get(car.getLaneId()-1);
+                Lane laneContainCar = road.getLaneListBy(getId()).get(car.getLaneId() - 1);
 
 
                 // 车的行进方向是否有优先级
@@ -116,7 +116,14 @@ public class CrossRoads implements Comparable<CrossRoads> {
             car.setState(CarState.OFF_ROAD);
             car.setEndTime(Scheduler.systemScheduleTime);
             Scheduler.totalScheduleTime += car.getEndTime() - car.getPlanTime();
-            road.removeCarFromRoad(car,lane);
+            road.removeCarFromRoad(car, lane);
+
+            // Special schedule time
+            if (car.isPriority()) {
+                Scheduler.specialScheduleTime = Scheduler.systemScheduleTime;
+                Scheduler.totalSpecialScheduleTime += car.getEndTime() - car.getPlanTime();
+            }
+
             stateChanged = true;
             return true;
         }
@@ -137,7 +144,7 @@ public class CrossRoads implements Comparable<CrossRoads> {
         int from = car.getPath().get(roadIdx);         // 车来源路的ID
         int to = car.getPath().get(roadIdx + 1);       // 车目标路的ID
 
-        return checkConflict(car,from,to);
+        return checkConflict(car, from, to);
     }
 
     private boolean checkHasPriorityToReachTheEnd(Car car, Road road) {
@@ -154,7 +161,7 @@ public class CrossRoads implements Comparable<CrossRoads> {
         if (to == -1)
             return true;
 
-        return checkConflict(car,road.getId(),to);
+        return checkConflict(car, road.getId(), to);
     }
 
 
@@ -381,7 +388,7 @@ public class CrossRoads implements Comparable<CrossRoads> {
         }
 
         // Debug
-        if(calculatePriority(carToMove, from, to) == maxVal)
+        if (calculatePriority(carToMove, from, to) == maxVal)
             System.err.println("checkConflict#error");
 
 

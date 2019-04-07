@@ -86,21 +86,19 @@ public class Main {
 
 
         trafficMap.initGraphEdge();
-//
-//        trafficMap.preScheduleDirection(1);
-//        trafficMap.preScheduleDirection(5);
 
 
-        trafficMap.preSchedule3(15);
 
-        trafficMap.preSchedule3(15);
+        trafficMap.preSchedule3(10);
 
-        trafficMap.preSchedule3(15);
+        trafficMap.preSchedule3(10);
 
-        trafficMap.preSchedule3(15);
+        trafficMap.preSchedule3(10);
 
+        trafficMap.preSchedule3(10);
+        trafficMap.preSchedule3(20);
 
-        trafficMap.scheduleTest2(30);
+        trafficMap.scheduleTest2(55);
 
 
         //打印结果，无需打印预置车辆
