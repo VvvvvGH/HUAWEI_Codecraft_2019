@@ -207,6 +207,7 @@ public class Car implements Comparable<Car> {
             System.out.println("Illegal position: " + position);
             System.err.println("Position must greater than 0");
         }
+
         this.position = position;
         return this;
     }

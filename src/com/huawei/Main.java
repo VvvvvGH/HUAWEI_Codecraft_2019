@@ -99,10 +99,8 @@ public class Main {
 
         trafficMap.preSchedule3(15);
 
-        for (int i = 30; i < 50; i++) {
-            trafficMap.scheduleTest2(i);
-        }
 
+        trafficMap.scheduleTest2(30);
 
 
         //打印结果，无需打印预置车辆

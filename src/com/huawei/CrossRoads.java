@@ -50,13 +50,11 @@ public class CrossRoads implements Comparable<CrossRoads> {
 
     public void schedule(Scheduler scheduler) {
 
-
         // 状态变化 flag
         stateChanged = false;
 
         // 每个路口，升序排列。
-        for (int roadId : roadTreeMap.keySet()) {
-            Road road = roadTreeMap.get(roadId);
+        for (Road road : roadTreeMap.values()) {
 
             Car car;
             while ((car = fetchCarFromList(road)) != null) {
@@ -107,18 +105,18 @@ public class CrossRoads implements Comparable<CrossRoads> {
         int roadIdx = car.getRoadIdx();
         // 车到达目的地
         if (roadIdx == car.getPath().size() - 1) {
+            Lane lane = road.laneContainsCar(car);
 
             // 前面有车，不能到达目的地
-            if (road.laneContainsCar(car).getFrontCarPosition(car.getPosition()) != -1) {
+            if (lane.getFrontCarPosition(car.getPosition()) != -1) {
                 System.err.println("前面有车，不能到达目的地: car " + car.getId() + " cross " + getId());
                 return false;
             }
 
-            // 移除waiting queue 里面的车
             car.setState(CarState.OFF_ROAD);
             car.setEndTime(Scheduler.systemScheduleTime);
             Scheduler.totalScheduleTime += car.getEndTime() - car.getPlanTime();
-            road.removeCarFromRoad(car);
+            road.removeCarFromRoad(car,lane);
             stateChanged = true;
             return true;
         }
@@ -138,39 +136,7 @@ public class CrossRoads implements Comparable<CrossRoads> {
         int roadIdx = car.getRoadIdx();
         int from = car.getPath().get(roadIdx);         // 车来源路的ID
         int to = car.getPath().get(roadIdx + 1);       // 车目标路的ID
-//
-//        Turn turn = findDirection(from, to);
-//        if (turn == Turn.LEFT) {
-//            // 检查直行优先
-//            // 检查要左转的车 右边路口有没有直行的车
-//            if (checkConflict(car, road.getId(), to, Turn.RIGHT, Turn.STRAIGHT)) {
-//                return false;
-//            }
-//        }
-//        if (turn == Turn.RIGHT) {
-//            // 检查左转优先
-//            // 检查要右转的车 对面路口有没有左转的车
-//            if (checkConflict(car, road.getId(), to, Turn.STRAIGHT, Turn.LEFT)) {
-//                return false;
-//            }
-//            // 检查直行优先
-//            // 检查要右转的车 左边路口有没有直行的车
-//            if (checkConflict(car, road.getId(), to, Turn.LEFT, Turn.STRAIGHT)) {
-//                return false;
-//            }
-//        }
-//        if (!car.isPriority() && turn == Turn.STRAIGHT) {
-//            // 检查 右边路口有没有右转的车
-//            if (checkConflict(car, road.getId(), to, Turn.RIGHT, Turn.RIGHT)) {
-//                return false;
-//            }
-//
-//            // 检查 左边路口有没有左转的车
-//            if (checkConflict(car, road.getId(), to, Turn.LEFT, Turn.LEFT)) {
-//                return false;
-//            }
-//
-//        }
+
         return checkConflict(car,from,to);
     }
 
@@ -187,16 +153,6 @@ public class CrossRoads implements Comparable<CrossRoads> {
         // 没有直行方向
         if (to == -1)
             return true;
-
-//        // 检查 右边路口有没有右转的车
-//        if (checkConflict(car, road.getId(), to, Turn.RIGHT, Turn.RIGHT)) {
-//            return false;
-//        }
-//
-//        // 检查 左边路口有没有左转的车
-//        if (checkConflict(car, road.getId(), to, Turn.LEFT, Turn.LEFT)) {
-//            return false;
-//        }
 
         return checkConflict(car,road.getId(),to);
     }

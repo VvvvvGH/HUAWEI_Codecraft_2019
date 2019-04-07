@@ -267,14 +267,24 @@ public class Road {
 
     // 把车辆从路上移除
     public void removeCarFromRoad(Car car) {
-        for (Lane lane : laneList) {
-            Iterator<Car> it = lane.getCarMap().values().iterator();
-            while (it.hasNext()) {
-                Car carOnLane = it.next();
-                if (carOnLane.getId() == car.getId()) {
-                    it.remove();
-                    return;
-                }
+        Lane lane = laneContainsCar(car);
+        Iterator<Car> iterator = lane.getCarMap().values().iterator();
+        while (iterator.hasNext()) {
+            Car carOnLane = iterator.next();
+            if(carOnLane.getId()==car.getId()){
+                iterator.remove();
+                break;
+            }
+        }
+    }
+
+    public void removeCarFromRoad(Car car, Lane lane) {
+        Iterator<Car> iterator = lane.getCarMap().values().iterator();
+        while (iterator.hasNext()) {
+            Car carOnLane = iterator.next();
+            if(carOnLane.getId()==car.getId()){
+                iterator.remove();
+                break;
             }
         }
     }
@@ -402,9 +412,9 @@ public class Road {
 
     public Lane laneContainsCar(Car car) {
         Lane laneContainCar = null;
-        for (Lane l : getLaneList()) {
-            if (l.getCarMap().containsValue(car)) {
-                laneContainCar = l;
+        for (Lane lane : getLaneList()) {
+            if (lane.getCarMap().containsValue(car)) {
+                laneContainCar = lane;
                 break;
             }
         }
@@ -421,7 +431,7 @@ public class Road {
     }
 
     public void runCarsInGarage(boolean priority, int crossId) {
-        if(garageMap.get(crossId).size()==0)
+        if (garageMap.get(crossId).size() == 0)
             return;
 
         Iterator<Car> iterator = garageMap.get(crossId).iterator();
@@ -433,8 +443,9 @@ public class Road {
 
             // 仅允许高优先级的车出发
             if (priority) {
+                //优先的车总是排在最前面，所以可以直接break，优化时间复杂度
                 if (!car.isPriority())
-                    continue;
+                    break;
             }
             if (car.getStartTime() <= Scheduler.systemScheduleTime) { // 车辆到达开始时间
 
@@ -444,7 +455,6 @@ public class Road {
                     iterator.remove();
                 }
             }
-
 
 
         }

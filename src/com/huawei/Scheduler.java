@@ -125,12 +125,12 @@ public class Scheduler {
     private boolean allCarInEndState() {
         if (Scheduler.carStateCounter.get(CarState.WAIT) != 0)
             return false;
-        // 遍历所有路口
-        for (CrossRoads cross : crossMap.values()) {
-            if (cross.isStateChanged()) {
-                return false;
-            }
-        }
+        // 无需遍历所有路口，上面已经达到判断的目的
+//        for (CrossRoads cross : crossMap.values()) {
+//            if (cross.isStateChanged()) {
+//                return false;
+//            }
+//        }
         return true;
     }
 
@@ -407,12 +407,13 @@ public class Scheduler {
                     scheduler.updateCarFromAnswer(answer);
                 }
         );
-
+        long startTime = System.currentTimeMillis();
 
         scheduler.stepUntilFinish();
         scheduler.printCarStates();
 
-
+        long endTime = System.currentTimeMillis();
+        System.out.println("Main程序运行时间：" + (endTime - startTime) + "ms");
     }
 
     public void updateCarFromAnswer(String answer) {
