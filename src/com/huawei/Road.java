@@ -102,7 +102,7 @@ public class Road {
                     lane = getLaneListBy(this.getStart()).get(i - 1);
             } else
                 lane = laneList.get(i - 1);
-            Integer front = lane.getFrontCarPosition(0);
+            int front = lane.getFrontCarPosition(0);
 
             if (front != -1) {
                 if (front > 1) {
@@ -124,9 +124,13 @@ public class Road {
                     lane.putCar(car, car.getPosition());
                     car.setLaneId(lane.getId()).setCurrentSpeed(sv1).setState(CarState.END).setRoadIdx(0);
                     return true;
-                } else
+                } else {
                     // 该车道已满
-                    continue;
+                    if(lane.getCar(front).getState()==CarState.WAIT)
+                        break;
+                    else
+                        continue;
+                }
             } else {
                 // 车可以上路，设置状态
                 if (sv1 < this.getLen()) {
@@ -262,7 +266,6 @@ public class Road {
             }
         } else
             System.err.println("addToGarage# unexpected direction");
-
     }
 
     // 把车辆从路上移除
@@ -271,7 +274,7 @@ public class Road {
         Iterator<Car> iterator = lane.getCarMap().values().iterator();
         while (iterator.hasNext()) {
             Car carOnLane = iterator.next();
-            if(carOnLane.getId()==car.getId()){
+            if (carOnLane.getId() == car.getId()) {
                 iterator.remove();
                 break;
             }
@@ -282,7 +285,7 @@ public class Road {
         Iterator<Car> iterator = lane.getCarMap().values().iterator();
         while (iterator.hasNext()) {
             Car carOnLane = iterator.next();
-            if(carOnLane.getId()==car.getId()){
+            if (carOnLane.getId() == car.getId()) {
                 iterator.remove();
                 break;
             }
@@ -438,7 +441,7 @@ public class Road {
         while (iterator.hasNext()) {
             Car car = iterator.next();
             if (car.getState() != CarState.IN_GARAGE) {
-                System.err.println("ERROR: 车库里出现错误状态的车。" + car.getId());
+                System.err.println("ERROR: 车库里出现错误状态的车。" + car.getId()+" state "+car.getState());
             }
 
             // 仅允许高优先级的车出发

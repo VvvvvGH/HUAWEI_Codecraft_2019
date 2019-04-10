@@ -69,7 +69,25 @@ public class Car implements Comparable<Car> {
     public static Comparator<Car> speedComparator = new Comparator<Car>() {
         @Override
         public int compare(Car car1, Car car2) {
-            return Integer.compare(car2.getTopSpeed(), car1.getTopSpeed());
+            return Integer.compare(car1.getTopSpeed(), car2.getTopSpeed());
+        }
+    };
+
+    public static Comparator<Car> prioritySpeedComparator = new Comparator<Car>() {
+        @Override
+        public int compare(Car car1, Car car2) {
+           int i1;
+           int i2;
+           if(car1.isPriority())
+               i1=100 + car1.getTopSpeed();
+           else
+               i1=1000+car1.getTopSpeed();
+            if(car2.isPriority())
+                i2=100 + car2.getTopSpeed();
+            else
+                i2=1000+car2.getTopSpeed();
+
+            return Integer.compare(i1,i2);
         }
     };
 

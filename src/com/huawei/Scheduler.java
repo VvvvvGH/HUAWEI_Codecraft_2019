@@ -77,29 +77,35 @@ public class Scheduler {
                 }
             }
 
-            DecimalFormat df = new DecimalFormat("0.00000");
+            double factorA = (formatFive(carMap.size() / (numOfPriorityCars * 1.0))) * 0.05 +
+                    formatFive(formatFive(maxSpeedOfAllCars * 1.0 / minSpeedOfAllCars) / formatFive(maxSpeedOfPriorityCars * 1.0 / minSpeedOfPriorityCars)) * 0.2375 +
+                    formatFive(formatFive(maxPlanTimeOfAllCars * 1.0 / minPlanTimeOfAllCars) / formatFive(maxPlanTimeOfPriorityCars * 1.0 / minPlanTimeOfPriorityCars)) * 0.2375 +
+                    formatFive(allCarStartDistribute.size() * 1.0 / priorityCarStartDistribute.size()) * 0.2375 +
+                    formatFive(allCarEndDistribute.size() * 1.0 / priorityCarEndDistribute.size()) * 0.2375;
 
-            double factorA = (carMap.size() / (numOfPriorityCars * 1.0)) * 0.05 +
-                    ((maxSpeedOfAllCars * 1.0 / minSpeedOfAllCars) / (maxSpeedOfPriorityCars * 1.0 / minSpeedOfPriorityCars)) * 0.2375 +
-                    ((maxPlanTimeOfAllCars * 1.0 / minPlanTimeOfAllCars) / (maxPlanTimeOfPriorityCars * 1.0 / minPlanTimeOfPriorityCars)) * 0.2375 +
-                    (allCarStartDistribute.size() * 1.0 / priorityCarStartDistribute.size()) * 0.2375 +
-                    (allCarEndDistribute.size() * 1.0 / priorityCarEndDistribute.size()) * 0.2375;
+            double factorB = formatFive(carMap.size() / (numOfPriorityCars * 1.0)) * 0.8 +
+                    formatFive(formatFive(maxSpeedOfAllCars * 1.0 / minSpeedOfAllCars) / formatFive(maxSpeedOfPriorityCars * 1.0 / minSpeedOfPriorityCars)) * 0.05 +
+                    formatFive(formatFive(maxPlanTimeOfAllCars * 1.0 / minPlanTimeOfAllCars) / formatFive(maxPlanTimeOfPriorityCars * 1.0 / minPlanTimeOfPriorityCars)) * 0.05 +
+                    formatFive(allCarStartDistribute.size() * 1.0 / priorityCarStartDistribute.size()) * 0.05 +
+                    formatFive(allCarEndDistribute.size() * 1.0 / priorityCarEndDistribute.size()) * 0.05;
 
-            double factorB = (carMap.size() / (numOfPriorityCars * 1.0)) * 0.8 +
-                    ((maxSpeedOfAllCars * 1.0 / minSpeedOfAllCars) / (maxSpeedOfPriorityCars * 1.0 / minSpeedOfPriorityCars)) * 0.05 +
-                    ((maxPlanTimeOfAllCars * 1.0 / minPlanTimeOfAllCars) / (maxPlanTimeOfPriorityCars * 1.0 / minPlanTimeOfPriorityCars)) * 0.05 +
-                    (allCarStartDistribute.size() * 1.0 / priorityCarStartDistribute.size()) * 0.05 +
-                    (allCarEndDistribute.size() * 1.0 / priorityCarEndDistribute.size()) * 0.05;
+            System.out.println("factor A :"+formatFive(factorA));
+            System.out.println("factor B :"+formatFive(factorB));
+            System.out.println("factor A * specialScheduleTime :"+(formatFive(factorA) * specialScheduleTime));
 
 
             System.out.println("优先车辆调度时间: " + (specialScheduleTime - minPlanTimeOfPriorityCars));
             System.out.println("优先车辆总调度时间: " + totalSpecialScheduleTime);
             System.out.println("原系统调度时间: " + systemScheduleTime);
             System.out.println("原所有车辆实际总调度时间: " + totalScheduleTime);
-            System.out.println("系统调度时间: " + (systemScheduleTime + Double.parseDouble(df.format(factorA)) * specialScheduleTime));
-            System.out.println("所有车辆实际总调度时间: " + (totalScheduleTime + Double.parseDouble(df.format(factorB)) * totalSpecialScheduleTime));
+            System.out.println("系统调度时间: " + Math.round (systemScheduleTime + factorA * (specialScheduleTime - minPlanTimeOfPriorityCars)));
+            System.out.println("所有车辆实际总调度时间: " + Math.round(totalScheduleTime + formatFive(factorB) * totalSpecialScheduleTime));
         }
+    }
 
+    public double formatFive(double value){
+        DecimalFormat df = new DecimalFormat("0.00000");
+        return Double.parseDouble(df.format(value));
     }
 
     public boolean stepUntilFinish() {
@@ -112,14 +118,15 @@ public class Scheduler {
 
     public boolean stepUntilFinishDebug() {
         while (carStateCounter.get(CarState.WAIT) != 0 || carStateCounter.get(CarState.END) != 0 || carStateCounter.get(CarState.IN_GARAGE) != 0) {
-            if (!stepWithPlot())
+            if (!stepWithExport())
                 return false;
         }
         return true;
     }
 
-    public boolean stepWithPlot() {
-        plotScheduleState();
+    public boolean stepWithExport() {
+        DecimalFormat df = new DecimalFormat("0000");
+        exportScheduleState("SDK_java/bin/config/"+df.format(systemScheduleTime)+".log");
         return step();
     }
 
@@ -186,12 +193,6 @@ public class Scheduler {
     private boolean allCarInEndState() {
         if (Scheduler.carStateCounter.get(CarState.WAIT) != 0)
             return false;
-        // 无需遍历所有路口，上面已经达到判断的目的
-//        for (CrossRoads cross : crossMap.values()) {
-//            if (cross.isStateChanged()) {
-//                return false;
-//            }
-//        }
         return true;
     }
 
@@ -299,12 +300,11 @@ public class Scheduler {
 
     public void exportScheduleState(String dataFilePath) {
         try (BufferedWriter br = new BufferedWriter(new FileWriter(dataFilePath))) {
-            br.write("time:" + systemScheduleTime + "\n");
-
             for (Road road : roadMap.values()) {
-                br.write(exportRoadLaneList(road, "forward") + "\n");
+                br.write("# Road ID = "+road.getId()+"\n");
+                br.write(exportRoadLaneList(road, "forward"));
                 if (road.isBidirectional()) {
-                    br.write(exportRoadLaneList(road, "backward") + "\n");
+                    br.write(exportRoadLaneList(road, "backward") );
                 }
             }
         } catch (Exception ex) {
@@ -320,24 +320,17 @@ public class Scheduler {
         else
             laneList = road.getLaneListBy(road.getStart());
 
-        builder.append(String.format("(%s,%s,[", road.getId(), direction));
-
         for (int i = 0; i < road.getNumOfLanes(); i++) {
-            builder.append("[");
+            builder.append("(");
             Lane lane = laneList.get(i);
 
             for (int j = road.getLen(); j >= 1; j--) {
                 Car car = lane.getCarMap().get(j);
-                if (car == null)
-                    builder.append("-1");
-                else
-                    builder.append(car.getId());
-
-                builder.append(",");
+                if (car != null)
+                    builder.append(String.format("(%s, %s), ",car.getId(),lane.getLength()-car.getPosition()));
             }
-            builder.append("],");
+            builder.append(")\n");
         }
-        builder.append("])");
 
         return builder.toString();
     }
@@ -470,7 +463,8 @@ public class Scheduler {
         );
         long startTime = System.currentTimeMillis();
 
-        scheduler.stepUntilFinish();
+        scheduler.stepUntilFinishDebug();
+
         scheduler.printCarStates();
 
         long endTime = System.currentTimeMillis();
@@ -494,5 +488,14 @@ public class Scheduler {
         addToGarage(car);
     }
 
+
+    public boolean havePresetCarOnRoad(){
+        for (Car car : carMap.values()) {
+            if (car.isPreset()&&car.getState()!=CarState.OFF_ROAD){
+                return true;
+            }
+        }
+        return false;
+    }
 
 }

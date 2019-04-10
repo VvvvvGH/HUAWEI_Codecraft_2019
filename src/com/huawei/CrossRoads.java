@@ -69,7 +69,7 @@ public class CrossRoads implements Comparable<CrossRoads> {
                     if (carReachedDestination(car, road)) {
                         road.updateLane(laneContainCar);
                         // 上路优先车辆
-                        scheduler.driveCarInGarage(true);
+                        road.runCarsInGarage(true,getId());
                         continue;
                     }
 
@@ -77,10 +77,9 @@ public class CrossRoads implements Comparable<CrossRoads> {
                     if (moveCarToNextRoad(car)) {
                         road.updateLane(laneContainCar);
                         // 上路优先车辆
-                        scheduler.driveCarInGarage(true);
+                        road.runCarsInGarage(true,getId());
                     } else
                         break;
-
 
                 } else
                     break;
@@ -247,13 +246,19 @@ public class CrossRoads implements Comparable<CrossRoads> {
         }
 
 
+
+
         if (hasPosition) {
             Lane laneToPut = null;
             for (Lane lane : laneListOnToRoad) {
                 if (lane.hasPosition()) {
                     laneToPut = lane;
                     break;
+                }else {
+                    if(lane.getCar(1).getState()==CarState.WAIT)
+                        return false;
                 }
+
             }
 
             //真正的把车移到下一条路。
