@@ -6,7 +6,6 @@ import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
 import org.jgrapht.graph.SimpleDirectedWeightedGraph;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 
 public class TrafficMap {
@@ -148,95 +147,6 @@ public class TrafficMap {
         });
     }
 
-    public Long presetCarTest() {
-        scheduler.reset();
-
-        // 先把优先车辆放入车库
-        cars.forEach((carId, car) -> {
-            if (car.isPreset()) {
-                scheduler.addToGarage(car);
-            }
-        });
-
-        scheduler.stepUntilFinish();
-        scheduler.printCarStates();
-        return -1L;
-    }
-
-    public Long scheduleTest(int carFlowLimit) {
-        scheduler.reset();
-        updateGraphEdge();
-
-        HashMap<Integer, Integer> carPlanTime = new HashMap<>();
-
-
-        // 先把优先车辆放入车库
-        cars.forEach((carId, car) -> {
-            if (car.isPreset()) {
-                scheduler.addToGarage(car);
-            }
-        });
-
-        cars.forEach((carId, car) -> {
-            carPlanTime.put(carId, car.getPlanTime());
-        });
-
-        int time = 0;
-        int count = 0;
-
-        HashMap<Integer, PriorityQueue<Car>> carDirection = directionClassification(DIRECTION);
-
-        for (int i = 0; i <= 1; i++) {
-
-            PriorityQueue<Car> carQueue = carDirection.get(i);
-
-            time += 2;
-
-            while (!carQueue.isEmpty()) {
-                time++;
-                count = 0;
-
-                while (true) {
-                    Car car = carQueue.peek();
-                    if (car == null || carPlanTime.get(car.getId()) > time || count >= carFlowLimit)
-                        break;
-
-                    GraphPath path = shortestDistancePath(graph, car.getFrom(), car.getTo());
-                    setCarPath(car, path);
-
-                    boolean hasBusyPath = false;
-                    for (Object edge : path.getEdgeList()) {
-                        if (((RoadEdge) edge).calculateLoad() > 0.9) {
-                            hasBusyPath = true;
-                            break;
-                        }
-                    }
-                    if (hasBusyPath) {
-                        carPlanTime.put(car.getId(), carPlanTime.get(car.getId()) + 1);
-                        continue;
-                    }
-
-
-                    car.setStartTime(time);
-                    scheduler.addToGarage(car);
-                    carQueue.remove(car);
-                    count++;
-
-                }
-                if (!scheduler.step())
-                    return -1L;
-                scheduler.printCarStates();
-                updateGraphEdge();
-            }
-
-        }
-
-
-        if (!scheduler.stepUntilFinish())
-            return -1L;
-        scheduler.printCarStates();
-        return scheduler.getSystemScheduleTime();
-    }
 
     public Long scheduleTest2(int carFlowLimit) {
         scheduler.reset();
@@ -279,7 +189,7 @@ public class TrafficMap {
 
                 boolean hasBusyPath = false;
                 for (Object edge : path.getEdgeList()) {
-                    if (((RoadEdge) edge).calculateLoad() > 0.75) {
+                    if (((RoadEdge) edge).calculateLoad() > 0.8) {
                         hasBusyPath = true;
                         break;
                     }
@@ -297,7 +207,7 @@ public class TrafficMap {
             }
             if (!scheduler.step())
                 return -1L;
-//            scheduler.printCarStates();
+
             updateGraphEdge();
         }
 
@@ -307,69 +217,111 @@ public class TrafficMap {
         return scheduler.getSystemScheduleTime();
     }
 
-
-    public long preSchedule2(int carFlowLimit) {
+    public long preScheduleLv2(int carFlow1,double threshold1,int carFlow2, double threshold2){
         scheduler.reset();
         updateGraphEdge();
 
-        // 先把优先车辆放入车库
+        HashMap<Integer, Integer> carPlanTime = new HashMap<>();
+        HashMap<Long, Integer> presetCarMap = new HashMap<>();
+
         cars.forEach((carId, car) -> {
+            carPlanTime.put(carId, car.getPlanTime());
+            // 先把预设车辆放入车库
             if (car.isPreset()) {
                 scheduler.addToGarage(car);
+                presetCarMap.put(car.getStartTime(), presetCarMap.get(car.getStartTime()) == null ? 1 : (presetCarMap.get(car.getStartTime()) + 1));
             }
         });
 
 
-        int time = 0;
+        long time = 0;
         int count = 0;
+        boolean haveCarLeft = true;
+        double busyPathThreshold;
+        int carFlowLimit;
 
         //Busy path counter
         TreeMap<Integer, Integer> roadCounter = new TreeMap<>();
 
-        ArrayList<Car> carList = new ArrayList<>();
-        cars.forEach((carId, car) -> {
-            if (!car.isPreset()) {
-                carList.add(car);
-            }
-        });
-        carList.sort(Car.speedComparator);
+        HashMap<Integer, ArrayList<Car>> carCrossMap = distributedOrder();
 
-        System.out.println("Start to schedule");
-        while (!carList.isEmpty()) {
+        System.out.println("Start lv2 pre schedule");
+
+        while (haveCarLeft) {
             time++;
             count = 0;
-            Iterator iterator = carList.iterator();
-            while (iterator.hasNext()) {
-                Car car = (Car) iterator.next();
+            if (presetCarMap.get(time) != null) {
+                count = presetCarMap.get(time);
+            }
+            if (scheduler.havePresetCarOnRoad()) {
+                carFlowLimit = carFlow1;
+                busyPathThreshold = threshold1;
+            }else {
+                carFlowLimit = carFlow2;
+                busyPathThreshold = threshold2;
+            }
 
-                if (car.getPlanTime() > time)
-                    continue;
-
+            boolean changed = true;
+            while (changed) {
                 if (count >= carFlowLimit)
                     break;
+                changed = false;
 
-                GraphPath path = shortestDistancePath(graph, car.getFrom(), car.getTo());
 
-                // 计算每一时间单位最忙的路
-                car.getPath().forEach(road -> {
-                    if (roads.get(road).calculateLoad() > 0.50) {
-                        if (roadCounter.containsKey(road))
-                            roadCounter.put(road, roadCounter.get(road) + 1);
-                        else
-                            roadCounter.put(road, 1);
+                for (ArrayList<Car> carList : carCrossMap.values()) {
+                    if (count >= carFlowLimit)
+                        break;
+
+                    if (carList.size() == 0)
+                        continue;
+                    Car car = carList.get(0);
+
+                    if (carPlanTime.get(car.getId()) > time)
+                        continue;
+
+
+
+                    GraphPath path = shortestDistancePath(graph, car.getFrom(), car.getTo());
+
+                    // 计算每一时间单位最忙的路
+                    car.getPath().forEach(road -> {
+                        if (roads.get(road).calculateLoad() > 0.80) {
+                            if (roadCounter.containsKey(road))
+                                roadCounter.put(road, roadCounter.get(road) + 1);
+                            else
+                                roadCounter.put(road, 1);
+                        }
+                    });
+
+                    boolean hasBusyPath = false;
+                    for (Object edge : path.getEdgeList()) {
+                        if (((RoadEdge) edge).calculateLoad() > busyPathThreshold) {
+                            hasBusyPath = true;
+                            break;
+                        }
                     }
-                });
+                    if (hasBusyPath) {
+                        continue;
+                    }
 
-                setCarPath(car, path);
-                car.setStartTime(time);
-                scheduler.addToGarage(car);
-                iterator.remove();
-                count++;
+                    setCarPath(car, path);
+                    car.setStartTime(time);
+                    scheduler.addToGarage(car);
+                    carList.remove(car);
+                    count++;
+                    changed = true;
+                }
 
             }
+
             if (!scheduler.step())
                 return -1L;
-            scheduler.printCarStates();
+            updateGraphEdge();
+            haveCarLeft = false;
+            for (ArrayList<Car> carList : carCrossMap.values()) {
+                if (carList.size() != 0)
+                    haveCarLeft = true;
+            }
         }
 
         if (!scheduler.stepUntilFinish())
@@ -390,10 +342,332 @@ public class TrafficMap {
             CrossRoads from = crossMap.get(road.getStart());
             CrossRoads to = crossMap.get(road.getEnd());
             RoadEdge edge = graph.getEdge(from, to);
-            graph.setEdgeWeight(edge, road.getLen() * 2.0);
+            graph.setEdgeWeight(edge, road.getLen() * 2);
             if (road.isBidirectional()) {
                 RoadEdge opposeEdge = graph.getEdge(to, from);
-                graph.setEdgeWeight(opposeEdge, road.getLen() * 2.0);
+                graph.setEdgeWeight(opposeEdge, road.getLen() * 2);
+            }
+        }
+
+
+        return scheduler.getSystemScheduleTime();
+    }
+
+    public Long scheduleTest1(int carFlow1,double threshold1,int carFlow2, double threshold2,int map) {
+        scheduler.reset();
+        updateGraphEdge();
+
+        HashMap<Integer, Integer> carPlanTime = new HashMap<>();
+        HashMap<Long, Integer> presetCarMap = new HashMap<>();
+
+        cars.forEach((carId, car) -> {
+            carPlanTime.put(carId, car.getPlanTime());
+            // 先把预设车辆放入车库
+            if (car.isPreset()) {
+                scheduler.addToGarage(car);
+                presetCarMap.put(car.getStartTime(), presetCarMap.get(car.getStartTime()) == null ? 1 : (presetCarMap.get(car.getStartTime()) + 1));
+            }
+        });
+
+
+        long time = 0;
+        int count = 0;
+        boolean haveCarLeft = true;
+        double busyPathThreshold;
+        int carFlowLimit;
+
+
+
+        HashMap<Integer, ArrayList<Car>> carCrossMap = distributedOrder();
+
+        System.out.println("Start to schedule");
+
+        while (haveCarLeft) {
+            time++;
+            count = 0;
+            if (presetCarMap.get(time) != null) {
+                count = presetCarMap.get(time);
+            }
+            if (scheduler.havePresetCarOnRoad()) {
+                carFlowLimit = carFlow1;
+                busyPathThreshold = threshold1;
+            }else {
+                carFlowLimit = carFlow2;
+                busyPathThreshold = threshold2;
+            }
+
+            boolean changed = true;
+            while (changed) {
+                if (count >= carFlowLimit)
+                    break;
+                changed = false;
+
+//                if(map==1){
+//                    if( time<800 ) {
+//                        if((time-1)%5 == 0)
+//                            carFlowLimit = 0;
+//                        else {
+//                            if( Scheduler.carStateCounter.get(CarState.END)>3500) {
+//                                carFlowLimit = 0;
+//                            }else {
+//                                carFlowLimit = 30;
+//                            }
+//                        }
+//                    }else if( time<1000 ) {
+//                        carFlowLimit = 50;
+//                    }else {
+//                        if( Scheduler.carStateCounter.get(CarState.END)>2500) {
+//                            carFlowLimit = 0;
+//                        }else {
+//                            carFlowLimit = 50;
+//                        }
+//                    }
+//                }
+
+                for (ArrayList<Car> carList : carCrossMap.values()) {
+                    if (count >= carFlowLimit)
+                        break;
+
+                    if (carList.size() == 0)
+                        continue;
+                    Car car = carList.get(0);
+
+                    if (carPlanTime.get(car.getId()) > time)
+                        continue;
+
+
+
+                    GraphPath path = shortestDistancePath(graph, car.getFrom(), car.getTo());
+
+                    boolean hasBusyPath = false;
+                    for (Object edge : path.getEdgeList()) {
+                        if (((RoadEdge) edge).calculateLoad() > busyPathThreshold) {
+                            hasBusyPath = true;
+                            break;
+                        }
+                    }
+                    if (hasBusyPath) {
+                        continue;
+                    }
+
+                    setCarPath(car, path);
+                    car.setStartTime(time);
+                    scheduler.addToGarage(car);
+                    carList.remove(car);
+                    count++;
+                    changed = true;
+                }
+
+            }
+
+            if (!scheduler.step())
+                return -1L;
+            updateGraphEdge();
+            System.out.print("count "+count+" ");
+            scheduler.printCarStates();
+            haveCarLeft = false;
+            for (ArrayList<Car> carList : carCrossMap.values()) {
+                if (carList.size() != 0)
+                    haveCarLeft = true;
+            }
+        }
+
+        if (!scheduler.stepUntilFinish())
+            return -1L;
+        scheduler.printCarStates();
+        return scheduler.getSystemScheduleTime();
+    }
+
+    public long preSchedule1(int carFlowLimit) {
+        scheduler.reset();
+        updateGraphEdge();
+
+        HashMap<Integer, Integer> carPlanTime = new HashMap<>();
+
+
+        cars.forEach((carId, car) -> {
+            carPlanTime.put(carId, car.getPlanTime());
+        });
+
+        //Busy path counter
+        TreeMap<Integer, Integer> roadCounter = new TreeMap<>();
+
+        int time = 0;
+        int count = 0;
+        boolean haveCarLeft = true;
+
+
+        HashMap<Integer, ArrayList<Car>> carCrossMap = distributedOrder();
+
+        System.out.println("Start pre schedule");
+
+        while (haveCarLeft) {
+            time++;
+            count = 0;
+
+            for (ArrayList<Car> carList : carCrossMap.values()) {
+                if (carList.size() == 0)
+                    continue;
+                Car car = carList.get(0);
+
+                if (car.getPlanTime() > time)
+                    continue;
+
+                if (count >= carFlowLimit)
+                    break;
+
+                GraphPath path = shortestDistancePath(graph, car.getFrom(), car.getTo());
+
+                // 计算每一时间单位最忙的路
+                car.getPath().forEach(road -> {
+                    if (roads.get(road).calculateLoad() > 0.80) {
+                        if (roadCounter.containsKey(road))
+                            roadCounter.put(road, roadCounter.get(road) + 1);
+                        else
+                            roadCounter.put(road, 1);
+                    }
+                });
+
+                setCarPath(car, path);
+                car.setStartTime(time);
+                scheduler.addToGarage(car);
+                carList.remove(car);
+                count++;
+
+            }
+            if (!scheduler.step())
+                return -1L;
+            updateGraphEdge();
+            haveCarLeft = false;
+            for (ArrayList<Car> carList : carCrossMap.values()) {
+                if (carList.size() != 0)
+                    haveCarLeft = true;
+            }
+        }
+
+        if (!scheduler.stepUntilFinish())
+            return -1L;
+        scheduler.printCarStates();
+
+        List<Map.Entry<Integer, Integer>> list = new ArrayList<>(roadCounter.entrySet());
+
+        Collections.sort(list, new Comparator<Map.Entry<Integer, Integer>>() {
+            public int compare(Map.Entry<Integer, Integer> o1, Map.Entry<Integer, Integer> o2) {
+                return o2.getValue().compareTo(o1.getValue());
+            }
+        });
+
+        int numOfRoadsToAdjust = roadCounter.size();
+        for (int i = 0; i < numOfRoadsToAdjust; i++) {
+            Road road = roads.get(list.get(i).getKey());
+            CrossRoads from = crossMap.get(road.getStart());
+            CrossRoads to = crossMap.get(road.getEnd());
+            RoadEdge edge = graph.getEdge(from, to);
+            graph.setEdgeWeight(edge, road.getLen() * 2);
+            if (road.isBidirectional()) {
+                RoadEdge opposeEdge = graph.getEdge(to, from);
+                graph.setEdgeWeight(opposeEdge, road.getLen() * 2);
+            }
+        }
+
+        return Scheduler.systemScheduleTime;
+    }
+
+    public long preSchedule2(int carFlowLimit) {
+        scheduler.reset();
+        updateGraphEdge();
+
+        HashMap<Integer, Integer> carPlanTime = new HashMap<>();
+
+
+        cars.forEach((carId, car) -> {
+            carPlanTime.put(carId, car.getPlanTime());
+        });
+
+        //Busy path counter
+        TreeMap<Integer, Integer> roadCounter = new TreeMap<>();
+
+        long time = 0;
+        int count = 0;
+        boolean haveCarLeft = true;
+
+
+        HashMap<Integer, ArrayList<Car>> carCrossMap = distributedOrder();
+
+        System.out.println("Start pre schedule");
+
+        while (haveCarLeft) {
+            time++;
+            count = 0;
+
+            boolean changed = true;
+            while (changed) {
+                if (count >= carFlowLimit)
+                    break;
+                changed = false;
+                for (ArrayList<Car> carList : carCrossMap.values()) {
+                    if (carList.size() == 0)
+                        continue;
+                    Car car = carList.get(0);
+
+                    if (car.getPlanTime() > time)
+                        continue;
+
+                    if (count >= carFlowLimit)
+                        break;
+
+                    GraphPath path = shortestDistancePath(graph, car.getFrom(), car.getTo());
+
+                    // 计算每一时间单位最忙的路
+                    car.getPath().forEach(road -> {
+                        if (roads.get(road).calculateLoad() > 0.50) {
+                            if (roadCounter.containsKey(road))
+                                roadCounter.put(road, roadCounter.get(road) + 1);
+                            else
+                                roadCounter.put(road, 1);
+                        }
+                    });
+
+                    setCarPath(car, path);
+                    car.setStartTime(time);
+                    scheduler.addToGarage(car);
+                    carList.remove(car);
+                    count++;
+                    changed = true;
+
+                }
+                if (!scheduler.step())
+                    return -1L;
+                updateGraphEdge();
+                haveCarLeft = false;
+                for (ArrayList<Car> carList : carCrossMap.values()) {
+                    if (carList.size() != 0)
+                        haveCarLeft = true;
+                }
+            }
+        }
+        if (!scheduler.stepUntilFinish())
+            return -1L;
+        scheduler.printCarStates();
+
+        List<Map.Entry<Integer, Integer>> list = new ArrayList<>(roadCounter.entrySet());
+
+        Collections.sort(list, new Comparator<Map.Entry<Integer, Integer>>() {
+            public int compare(Map.Entry<Integer, Integer> o1, Map.Entry<Integer, Integer> o2) {
+                return o2.getValue().compareTo(o1.getValue());
+            }
+        });
+
+        int numOfRoadsToAdjust = roadCounter.size();
+        for (int i = 0; i < numOfRoadsToAdjust; i++) {
+            Road road = roads.get(list.get(i).getKey());
+            CrossRoads from = crossMap.get(road.getStart());
+            CrossRoads to = crossMap.get(road.getEnd());
+            RoadEdge edge = graph.getEdge(from, to);
+            graph.setEdgeWeight(edge, road.getLen() * 2);
+            if (road.isBidirectional()) {
+                RoadEdge opposeEdge = graph.getEdge(to, from);
+                graph.setEdgeWeight(opposeEdge, road.getLen() * 2);
             }
         }
 
@@ -483,47 +757,21 @@ public class TrafficMap {
     }
 
 
-
-    public void pathClassification() {
-        priorityQueue.clear();
-
-        HashMap<Integer, ConcurrentLinkedQueue<Car>> crossHashMap = new HashMap<>();
-
-        for (CrossRoads cross : crossMap.values()) {
-            crossHashMap.put(cross.getId(), new ConcurrentLinkedQueue<>());
+    public HashMap<Integer, ArrayList<Car>> distributedOrder() {
+        HashMap<Integer, ArrayList<Car>> crossCarMap = new HashMap<>();
+        for (CrossRoads crossRoad : crossMap.values()) {
+            crossCarMap.put(crossRoad.getId(), new ArrayList<>());
         }
-
-        this.getCars().forEach(
-                (carId, car) -> priorityQueue.offer(car)
-        );
-
-        while (!priorityQueue.isEmpty()) {
-            Car car = priorityQueue.remove();
-            crossHashMap.get(car.getFrom()).offer(car);
+        for (Car car : cars.values()) {
+            if (!car.isPreset())
+                crossCarMap.get(car.getFrom()).add(car);
         }
-
-        ConcurrentLinkedQueue<Car> carQueue = new ConcurrentLinkedQueue<>();
-        while (true) {
-            boolean empty = true;
-            PriorityQueue<Car> temp = new PriorityQueue<>();
-            for (CrossRoads cross : crossMap.values()) {
-
-                if (crossHashMap.get(cross.getId()).isEmpty())
-                    continue;
-                Car car = crossHashMap.get(cross.getId()).remove();
-                if (car != null) {
-                    empty = false;
-                    temp.offer(car);
-                }
-            }
-            while (!temp.isEmpty())
-                carOrderByStartList.add(temp.remove());
-
-            if (empty)
-                break;
+        for (ArrayList<Car> carList : crossCarMap.values()) {
+            carList.sort(Car.prioritySpeedComparator);
         }
-
+        return crossCarMap;
     }
+
 
     public HashMap<Integer, PriorityQueue<Car>> directionClassification(int direction) {
         // Direction = 1 north south
@@ -572,255 +820,6 @@ public class TrafficMap {
         }
         return directionMap;
 
-    }
-
-    public ArrayList<Car> pathLengthClassification() {
-        priorityQueue.clear();
-
-        this.getCars().forEach(
-                (carId, car) -> priorityQueue.offer(car)
-        );
-        ArrayList<Car> carList = new ArrayList<>();
-
-        carList.addAll(cars.values());
-
-        carList.sort(new Comparator<Car>() {
-            @Override
-            public int compare(Car car1, Car car2) {
-                return shortestDistancePath(graph, car1.getFrom(), car1.getTo()).getLength() - shortestDistancePath(graph, car2.getFrom(), car2.getTo()).getLength();
-            }
-        });
-
-        return carList;
-
-    }
-
-    public long preSchedule(int max_car_limit) {
-        scheduler.reset();
-
-        priorityQueue.clear();
-        this.getCars().forEach(
-                (carId, car) -> priorityQueue.offer(car)
-        );
-
-        PriorityQueue<Car> carQueue = priorityQueue;
-
-        //Busy path counter
-        TreeMap<Integer, Integer> roadCounter = new TreeMap<>();
-
-        int time = 0;
-        int count = 0;
-        while (!carQueue.isEmpty()) {
-            time++;
-            count = 0;
-            while (true) {
-                Car car = carQueue.peek();
-                if (car == null || car.getPlanTime() > time || count >= max_car_limit)
-                    break;
-
-
-                GraphPath path = shortestDistancePath(graph, car.getFrom(), car.getTo());
-                setCarPath(car, path);
-
-                // 计算每一时间单位最忙的路
-                car.getPath().forEach(road -> {
-                    if (roads.get(road).calculateLoad() > 0.50) {
-                        if (roadCounter.containsKey(road))
-                            roadCounter.put(road, roadCounter.get(road) + 1);
-                        else
-                            roadCounter.put(road, 1);
-                    }
-                });
-                car.setStartTime(time).setState(CarState.IN_GARAGE);
-                scheduler.addToGarage(car);
-                carQueue.remove(car);
-
-                count++;
-            }
-            if (!scheduler.step())
-                return -1;
-        }
-        if (!scheduler.stepUntilFinish())
-            return -1;
-        scheduler.printCarStates();
-
-        List<Map.Entry<Integer, Integer>> list = new ArrayList<>(roadCounter.entrySet());
-
-        Collections.sort(list, new Comparator<Map.Entry<Integer, Integer>>() {
-            public int compare(Map.Entry<Integer, Integer> o1, Map.Entry<Integer, Integer> o2) {
-                return o2.getValue().compareTo(o1.getValue());
-            }
-        });
-
-        int numOfRoadsToAdjust = roadCounter.size();
-        for (int i = 0; i < numOfRoadsToAdjust; i++) {
-            Road road = roads.get(list.get(i).getKey());
-            CrossRoads from = crossMap.get(road.getStart());
-            CrossRoads to = crossMap.get(road.getEnd());
-            RoadEdge edge = graph.getEdge(from, to);
-            graph.setEdgeWeight(edge, road.getLen() * 2.0);
-            if (road.isBidirectional()) {
-                RoadEdge opposeEdge = graph.getEdge(to, from);
-                graph.setEdgeWeight(opposeEdge, road.getLen() * 2.0);
-            }
-        }
-
-        return Scheduler.systemScheduleTime;
-    }
-
-    public long preScheduleDirection(int max_car_limit) {
-        scheduler.reset();
-
-        // 先把优先车辆放入车库
-        cars.forEach((carId, car) -> {
-            if (car.isPreset()) {
-                scheduler.addToGarage(car);
-            }
-        });
-
-        HashMap<Integer, PriorityQueue<Car>> carDirection = directionClassification(DIRECTION);
-
-
-        //Busy path counter
-        TreeMap<Integer, Integer> roadCounter = new TreeMap<>();
-
-        int time = 0;
-        int count = 0;
-        for (int i = 0; i <= 1; i++) {
-
-            PriorityQueue<Car> carQueue = carDirection.get(i);
-            while (!carQueue.isEmpty()) {
-                time++;
-                count = 0;
-                while (true) {
-                    Car car = carQueue.peek();
-                    if (car == null || car.getPlanTime() > time || count >= max_car_limit)
-                        break;
-
-
-                    GraphPath path = shortestDistancePath(graph, car.getFrom(), car.getTo());
-                    setCarPath(car, path);
-
-                    // 计算每一时间单位最忙的路
-                    car.getPath().forEach(road -> {
-                        if (roads.get(road).calculateLoad() > 0.5) {
-                            if (roadCounter.containsKey(road))
-                                roadCounter.put(road, roadCounter.get(road) + 1);
-                            else
-                                roadCounter.put(road, 1);
-                        }
-                    });
-                    car.setStartTime(time).setState(CarState.IN_GARAGE);
-                    scheduler.addToGarage(car);
-                    carQueue.remove(car);
-
-                    count++;
-                }
-                if (!scheduler.step())
-                    return -1;
-            }
-        }
-        if (!scheduler.stepUntilFinish())
-            return -1;
-        scheduler.printCarStates();
-
-        List<Map.Entry<Integer, Integer>> list = new ArrayList<>(roadCounter.entrySet());
-
-        Collections.sort(list, new Comparator<Map.Entry<Integer, Integer>>() {
-            public int compare(Map.Entry<Integer, Integer> o1, Map.Entry<Integer, Integer> o2) {
-                return o2.getValue().compareTo(o1.getValue());
-            }
-        });
-
-        int numOfRoadsToAdjust = roadCounter.size();
-        for (int i = 0; i < numOfRoadsToAdjust; i++) {
-            Road road = roads.get(list.get(i).getKey());
-            CrossRoads from = crossMap.get(road.getStart());
-            CrossRoads to = crossMap.get(road.getEnd());
-            RoadEdge edge = graph.getEdge(from, to);
-            graph.setEdgeWeight(edge, road.getLen() * 6.5);
-            if (road.isBidirectional()) {
-                RoadEdge opposeEdge = graph.getEdge(to, from);
-                graph.setEdgeWeight(opposeEdge, road.getLen() * 6.5);
-            }
-        }
-
-        return Scheduler.systemScheduleTime;
-    }
-
-    public long preScheduleAccurateTest(int carFlowLimit) {
-        scheduler.reset();
-
-        HashMap<Integer, PriorityQueue<Car>> carDirection = directionClassification(DIRECTION);
-
-
-        //Busy path recorder
-        ArrayList<RoadEdge> busyEdges = new ArrayList<>();
-
-        //  出发时间
-        int time = 0;
-        //　车流计数器
-        int count = 0;
-
-        ArrayList<Car> carNotSent = new ArrayList<>();
-
-        for (int i = 0; i <= 1; i++) {
-            // 获取一个分类
-            PriorityQueue<Car> carQueue = carDirection.get(i);
-
-            //　暂停两个时间片，让反向车流先走再发车
-            time += 2;
-
-            while (!carQueue.isEmpty()) {
-                time++;
-                count = 0;
-                carNotSent.clear();
-
-                while (true) {
-
-                    Car car = carQueue.peek();
-                    if (car == null || count >= carFlowLimit)
-                        break;
-
-                    if (car.getPlanTime() > time) {
-                        carNotSent.add(car);
-                        carQueue.remove(car);
-                        continue;
-                    }
-
-                    GraphPath path = shortestDistancePath(graph, car.getFrom(), car.getTo());
-                    setCarPath(car, path);
-
-                    for (Object edge : path.getEdgeList()) {
-                        if (((RoadEdge) edge).calculateLoad() > 0.50) {
-                            busyEdges.add(((RoadEdge) edge));
-                            break;
-                        }
-                    }
-
-
-                    car.setStartTime(time).setState(CarState.IN_GARAGE);
-                    scheduler.addToGarage(car);
-                    carQueue.remove(car);
-                    count++;
-                }
-
-
-                carQueue.addAll(carNotSent);
-                if (!scheduler.step()) {
-                    return -1L;
-                }
-            }
-        }
-        if (!scheduler.stepUntilFinish())
-            return -1;
-        scheduler.printCarStates();
-
-        for (RoadEdge edge : busyEdges) {
-            graph.setEdgeWeight(edge, edge.road.getLen() * 1.5);
-        }
-
-        return Scheduler.systemScheduleTime;
     }
 
 
