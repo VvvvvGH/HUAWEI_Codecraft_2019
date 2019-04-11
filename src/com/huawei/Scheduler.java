@@ -89,21 +89,17 @@ public class Scheduler {
                     formatFive(allCarStartDistribute.size() * 1.0 / priorityCarStartDistribute.size()) * 0.05 +
                     formatFive(allCarEndDistribute.size() * 1.0 / priorityCarEndDistribute.size()) * 0.05;
 
-            System.out.println("factor A :"+formatFive(factorA));
-            System.out.println("factor B :"+formatFive(factorB));
-            System.out.println("factor A * specialScheduleTime :"+(formatFive(factorA) * specialScheduleTime));
-
 
             System.out.println("优先车辆调度时间: " + (specialScheduleTime - minPlanTimeOfPriorityCars));
             System.out.println("优先车辆总调度时间: " + totalSpecialScheduleTime);
             System.out.println("原系统调度时间: " + systemScheduleTime);
             System.out.println("原所有车辆实际总调度时间: " + totalScheduleTime);
-            System.out.println("系统调度时间: " + Math.round (systemScheduleTime + factorA * (specialScheduleTime - minPlanTimeOfPriorityCars)));
-            System.out.println("所有车辆实际总调度时间: " + Math.round(totalScheduleTime + formatFive(factorB) * totalSpecialScheduleTime));
+            System.out.println("系统调度时间: " + Math.round(systemScheduleTime + factorA * (specialScheduleTime - minPlanTimeOfPriorityCars)));
+            System.out.println("所有车辆实际总调度时间: " +(totalScheduleTime + formatFive(factorB) * totalSpecialScheduleTime));
         }
     }
 
-    public double formatFive(double value){
+    public double formatFive(double value) {
         DecimalFormat df = new DecimalFormat("0.00000");
         return Double.parseDouble(df.format(value));
     }
@@ -118,15 +114,16 @@ public class Scheduler {
 
     public boolean stepUntilFinishDebug() {
         while (carStateCounter.get(CarState.WAIT) != 0 || carStateCounter.get(CarState.END) != 0 || carStateCounter.get(CarState.IN_GARAGE) != 0) {
-            if (!stepWithExport())
+            if (!step())
                 return false;
+            printCarStates();
         }
         return true;
     }
 
     public boolean stepWithExport() {
         DecimalFormat df = new DecimalFormat("0000");
-        exportScheduleState("SDK_java/bin/config/"+df.format(systemScheduleTime)+".log");
+        exportScheduleState("SDK_java/bin/config/" + df.format(systemScheduleTime) + ".log");
         return step();
     }
 
@@ -158,6 +155,36 @@ public class Scheduler {
         return true;
     }
 
+//    public boolean step(TrafficMap trafficMap) {
+//        //系统调度时间
+//        systemScheduleTime += UNIT_TIME;
+//
+//        //       １升序循环整个地图中所有的道路
+//        //       ２让所有在道路上的车开始行驶到等待或终止状态
+//        driveAllCarOnRoad();
+//        trafficMap.putPriorityCar(this);
+//        // 优先上路车辆
+//        driveCarInGarage(true);
+//        while (!allCarInEndState()) {
+//            //全局车辆状态标识
+//            carStateChanged = false;
+//
+//            // 应该用do while
+//            for (CrossRoads cross : crossMap.values()) {
+//                cross.schedule(this);
+//            }
+//
+//            if (detectDeadLock())
+//                return false;
+//
+//        }
+//        trafficMap.putNormalCar(this);
+//        // 所有车辆上路
+//        driveCarInGarage(false);
+//
+//        return true;
+//    }
+
 
     public boolean detectDeadLock() {
         if (!carStateChanged)
@@ -166,6 +193,8 @@ public class Scheduler {
             deadLockCounter = 0;
         if (deadLockCounter == DEADLOCK_DETECT_THRESHOLD) {
             System.err.println("Dead lock detected!");
+            System.out.println();
+            printDeadLockRoads();
             return true;
         }
 
@@ -248,6 +277,18 @@ public class Scheduler {
         roadMap.forEach((roadId, road) -> road.resetRoadState());
     }
 
+    public void rollback(long time) {
+        // 重置调度器所有参数的状态
+        resetCarStatusCounter();
+        resetDeadlockCounter();
+
+        systemScheduleTime = 0L;
+        totalScheduleTime = 0L;
+
+        carMap.forEach((carId, car) -> car.rollbackCarState(time));
+        roadMap.forEach((roadId, road) -> road.resetRoadState());
+    }
+
     public Long getScheduleTime() {
         return totalScheduleTime;
     }
@@ -301,10 +342,10 @@ public class Scheduler {
     public void exportScheduleState(String dataFilePath) {
         try (BufferedWriter br = new BufferedWriter(new FileWriter(dataFilePath))) {
             for (Road road : roadMap.values()) {
-                br.write("# Road ID = "+road.getId()+"\n");
+                br.write("# Road ID = " + road.getId() + "\n");
                 br.write(exportRoadLaneList(road, "forward"));
                 if (road.isBidirectional()) {
-                    br.write(exportRoadLaneList(road, "backward") );
+                    br.write(exportRoadLaneList(road, "backward"));
                 }
             }
         } catch (Exception ex) {
@@ -327,7 +368,7 @@ public class Scheduler {
             for (int j = road.getLen(); j >= 1; j--) {
                 Car car = lane.getCarMap().get(j);
                 if (car != null)
-                    builder.append(String.format("(%s, %s), ",car.getId(),lane.getLength()-car.getPosition()));
+                    builder.append(String.format("(%s, %s), ", car.getId(), lane.getLength() - car.getPosition()));
             }
             builder.append(")\n");
         }
@@ -335,75 +376,6 @@ public class Scheduler {
         return builder.toString();
     }
 
-    public void saveSchedulerState(long time) {
-
-        HashMap<String, Object> stateMap = new HashMap<>();
-
-        ArrayList<Car.CarStates> carStates = new ArrayList<>();
-
-        carMap.values().forEach(car ->
-                carStates.add(car.dumpStates())
-        );
-
-        stateMap.put("carState", carStates);
-
-        ArrayList<Road.RoadStates> roadStates = new ArrayList<>();
-
-        roadMap.values().forEach(road ->
-                roadStates.add(road.dumpStates())
-        );
-
-        stateMap.put("roadState", roadStates);
-
-
-        ArrayList<Car> garageToSave = new ArrayList<>();
-
-
-        stateMap.put("garage", garageToSave);
-
-        stateMap.put("totalScheduleTime", totalScheduleTime);
-        stateMap.put("systemScheduleTime", systemScheduleTime);
-        stateMap.put("carStateChanged", carStateChanged);
-        stateMap.put("deadLockCounter", deadLockCounter);
-
-
-        stateMap.put("CarState.WAIT", carStateCounter.get(CarState.WAIT));
-        stateMap.put("CarState.IN_GARAGE", carStateCounter.get(CarState.IN_GARAGE));
-        stateMap.put("CarState.OFF_ROAD", carStateCounter.get(CarState.OFF_ROAD));
-        stateMap.put("CarState.END", carStateCounter.get(CarState.END));
-
-        timeStateMap.put(time, stateMap);
-    }
-
-    public void restoreSchedulerState(long time) {
-
-        HashMap<String, Object> stateMap = timeStateMap.get(time);
-
-        ArrayList<Car.CarStates> carStates = (ArrayList<Car.CarStates>) stateMap.get("carState");
-
-        carStates.forEach(carState -> {
-            carMap.get(carState.getId()).restoreStates(carState);
-        });
-
-        ArrayList<Road.RoadStates> roadStates = (ArrayList<Road.RoadStates>) stateMap.get("roadState");
-
-        roadStates.forEach(roadState -> {
-            roadMap.get(roadState.getRoadId()).restoreStates(roadState);
-        });
-
-
-        totalScheduleTime = (Long) stateMap.get("totalScheduleTime");
-        systemScheduleTime = (Long) stateMap.get("systemScheduleTime");
-        carStateChanged = (boolean) stateMap.get("carStateChanged");
-        deadLockCounter = (int) stateMap.get("deadLockCounter");
-
-
-        carStateCounter.put(CarState.WAIT, (Integer) stateMap.get("CarState.WAIT"));
-        carStateCounter.put(CarState.IN_GARAGE, (Integer) stateMap.get("CarState.IN_GARAGE"));
-        carStateCounter.put(CarState.OFF_ROAD, (Integer) stateMap.get("CarState.OFF_ROAD"));
-        carStateCounter.put(CarState.END, (Integer) stateMap.get("CarState.WAIT"));
-
-    }
 
     public static void main(String[] args) {
 
@@ -465,8 +437,6 @@ public class Scheduler {
 
         scheduler.stepUntilFinishDebug();
 
-        scheduler.printCarStates();
-
         long endTime = System.currentTimeMillis();
         System.out.println("Main程序运行时间：" + (endTime - startTime) + "ms");
     }
@@ -488,14 +458,69 @@ public class Scheduler {
         addToGarage(car);
     }
 
+    public void printDeadLockRoads() {
+        System.out.print("DeadLock position = [");
+        for (Road road : roadMap.values()) {
+            if (road.getCarSequenceList(road.getEnd()).size() != 0) {
+                System.out.print(road.getId() + ", ");
+            }
+            if (road.isBidirectional()) {
+                if (road.getCarSequenceList(road.getStart()).size() != 0) {
+                    System.out.print(road.getId() + ", ");
+                }
+            }
+        }
+        System.out.println("]");
+    }
 
-    public boolean havePresetCarOnRoad(){
+    public boolean havePresetCarOnRoad() {
         for (Car car : carMap.values()) {
-            if (car.isPreset()&&car.getState()!=CarState.OFF_ROAD){
+            if (car.isPreset() && car.getState() != CarState.OFF_ROAD) {
                 return true;
             }
         }
         return false;
+    }
+
+    public boolean havePriorityCarOnRoad() {
+        for (Car car : carMap.values()) {
+            if (car.isPriority() && car.getState() != CarState.OFF_ROAD) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public long resetDeadlockedCars() {
+        ArrayList<Car> deadlockCarList = new ArrayList<>();
+        long minTime = 9999L;
+        for (Road road : roadMap.values()) {
+            ArrayList<Car> list = road.getCarSequenceList(road.getEnd());
+            if (list.size() != 0) {
+                for (Car car : list) {
+                    if (!car.isPriority() && !car.isPreset()) {
+                        if (car.getStartTime() < minTime)
+                            minTime = car.getStartTime();
+                        car.resetCarState();
+                        deadlockCarList.add(car);
+                    }
+                }
+            }
+            if (road.isBidirectional()) {
+                list = road.getCarSequenceList(road.getStart());
+                if (list.size() != 0) {
+                    for (Car car : list) {
+                        if (!car.isPriority() && !car.isPreset()) {
+                            if (car.getStartTime() < minTime)
+                                minTime = car.getStartTime();
+                            car.resetCarState();
+                            deadlockCarList.add(car);
+                        }
+                    }
+                }
+            }
+        }
+        return minTime;
     }
 
 }

@@ -352,7 +352,42 @@ public class TrafficMap {
         return scheduler.getSystemScheduleTime();
     }
 
-    public Long scheduleTest1(int carFlow1,double threshold1,int carFlow2, double threshold2,int map) {
+    public void schedulePresetCarOnly() {
+        scheduler.reset();
+        cars.forEach((carId, car) -> {
+            // 先把预设车辆放入车库
+            if (car.isPreset()) {
+                scheduler.addToGarage(car);
+            }
+        });
+        scheduler.stepUntilFinishDebug();
+
+    }
+
+    public long autoRollback() {
+        // When deadlock happens, auto rollback
+        long rollbackToTime = scheduler.resetDeadlockedCars();
+        System.out.println("Rollback to " + rollbackToTime);
+        scheduler.rollback(rollbackToTime);
+        cars.forEach((carId, car) -> {
+            if (car.getStartTime() != -1L) {
+                scheduler.addToGarage(car);
+            }
+        });
+        updateGraphEdge();
+        while (Scheduler.systemScheduleTime != rollbackToTime) {
+            if (!scheduler.step()) {
+                System.err.println("Deadlock again !!! Unable to recover from deadlock");
+                return -1L;
+            }
+        }
+        updateGraphEdge();
+        System.out.println("Rollback finished ! Rollback to " + Scheduler.systemScheduleTime);
+        scheduler.printCarStates();
+        return Scheduler.systemScheduleTime;
+    }
+
+    public Long scheduleTest1(int carFlow1, double threshold1, int carFlow2, double threshold2) {
         scheduler.reset();
         updateGraphEdge();
 
