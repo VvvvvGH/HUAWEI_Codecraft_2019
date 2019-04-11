@@ -86,7 +86,11 @@ public class Car implements Comparable<Car> {
                 i2=100 + car2.getTopSpeed();
             else
                 i2=1000+car2.getTopSpeed();
-
+            // 优先车辆先发快的再发慢的
+            if(car1.isPriority()&&car2.isPriority()){
+                return Integer.compare(i2,i1);
+            }
+            // 普通车辆先发慢的再发快的
             return Integer.compare(i1,i2);
         }
     };
@@ -324,6 +328,18 @@ public class Car implements Comparable<Car> {
         this.laneId = -1;
         this.roadIdx = -1;
 
+        this.state = null;
+        this.position = -1;
+    }
+
+    public void rollbackCarState(long time) {
+        if(!isPreset()&&getStartTime()>time){
+            this.startTime=-1;
+        }
+        this.currentSpeed = 0;
+        this.endTime = -1;
+        this.laneId = -1;
+        this.roadIdx = -1;
         this.state = null;
         this.position = -1;
     }

@@ -90,7 +90,7 @@ public class CrossRoads implements Comparable<CrossRoads> {
 
     }
 
-    private Car fetchCarFromList(Road road) {
+    public Car fetchCarFromList(Road road) {
         ArrayList<Car> carArrayList = road.getCarSequenceList(getId());
         // 当路为单向时，查找 start端的 列表为空
         if (carArrayList == null || carArrayList.size() == 0)

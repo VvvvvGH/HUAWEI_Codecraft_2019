@@ -38,7 +38,7 @@ public class RoadEdge extends DefaultWeightedEdge  {
         if (before != 99999)
             weightBefore = before;
 
-        if (calculateLoad() > 0.8)
+        if (calculateLoad() > 0.80)
             return 99999;
 
         return weightBefore;
