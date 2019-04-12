@@ -53,6 +53,7 @@ public class TrafficMap {
         });
     }
 
+
     public void initGraphEdge(double[] weights) {
         crossMap.forEach((cross, crossObj) -> graph.addVertex(crossObj));
         Iterator<Integer> it = roads.keySet().iterator();
@@ -77,6 +78,7 @@ public class TrafficMap {
             i++;
         }
     }
+
 
     public double[] readGraphEdgeWeight() {
         crossMap.forEach((cross, crossObj) -> graph.addVertex(crossObj));
@@ -367,6 +369,7 @@ public class TrafficMap {
     public long autoRollback() {
         // When deadlock happens, auto rollback
         long rollbackToTime = scheduler.resetDeadlockedCars();
+
         System.out.println("Rollback to " + rollbackToTime);
         scheduler.rollback(rollbackToTime);
         cars.forEach((carId, car) -> {
@@ -381,7 +384,6 @@ public class TrafficMap {
                 return -1L;
             }
         }
-        updateGraphEdge();
         System.out.println("Rollback finished ! Rollback to " + Scheduler.systemScheduleTime);
         scheduler.printCarStates();
         return Scheduler.systemScheduleTime;
@@ -430,19 +432,21 @@ public class TrafficMap {
             }
 
             if (!deadlock) {
+                //没有死锁时设置参数
                 if (scheduler.havePriorityCarOnRoad()) {
                     carFlowLimit = carFlow1;
                     busyPathThreshold = threshold1;
                 } else {
                     carFlowLimit = carFlow2;
                     busyPathThreshold = threshold2;
-                    if(once){
-                        carOnRoadLimit=9999; // 当没有优先车的时候重置
-                        once=false;
+                    if (once) {
+                        carOnRoadLimit = 9999; // 当没有优先车的时候重置
+                        once = false;
                     }
                 }
 
             } else {
+                //死锁时限制发车流量
                 carFlowLimit = 1;
                 busyPathThreshold = 1;
                 if (rollbackThrottleCount == 0) {
@@ -453,12 +457,153 @@ public class TrafficMap {
             }
             if (carOnRoadLimit != -1 && Scheduler.carStateCounter.get(CarState.END) > carOnRoadLimit) {
                 carFlowLimit = 15;
-                busyPathThreshold = 0.3;
+                busyPathThreshold = 0.4;
             }
 
 
             boolean changed = true;
             while (changed) {
+                if (count >= carFlowLimit)
+                    break;
+                changed = false;
+
+                for (ArrayList<Car> carList : carCrossMap.values()) {
+                    if (count >= carFlowLimit)
+                        break;
+
+                    if (carList.size() == 0)
+                        continue;
+
+                    Car car = carList.get(0);
+
+                    if (carPlanTime.get(car.getId()) > time)
+                        continue;
+
+                    GraphPath path = shortestDistancePath(graph, car.getFrom(), car.getTo());
+
+                    int busyPathCount = 0;
+                    for (Object edge : path.getEdgeList()) {
+                        if (((RoadEdge) edge).calculateLoad() > busyPathThreshold) {
+                            busyPathCount++;
+                        }
+                    }
+
+                    if (!car.isPriority() && busyPathCount >= 3) {
+                        continue;
+                    }
+
+                    setCarPath(car, path);
+                    car.setStartTime(time);
+                    scheduler.addToGarage(car);
+                    carList.remove(car);
+                    count++;
+                    changed = true;
+                }
+
+            }
+            int maxCarOnRoad = Scheduler.carStateCounter.get(CarState.END);
+            if (!scheduler.step()) {
+                System.err.println("Deadlock happened, start rollback");
+                //设置路上车流阀值
+                carOnRoadLimit = maxCarOnRoad - 100;
+                time = autoRollback();
+                if (time < 0L)
+                    return -1L;
+                carCrossMap = distributedOrder(true);
+                deadlock = true;
+
+            }
+            updateGraphEdge();
+            System.out.print("count " + count + " ");
+            scheduler.printCarStates();
+            haveCarLeft = false;
+            for (ArrayList<Car> carList : carCrossMap.values()) {
+                if (carList.size() != 0)
+                    haveCarLeft = true;
+            }
+            if (Scheduler.carStateCounter.get(CarState.END) != 0)
+                haveCarLeft = true;
+        }
+
+        if (!scheduler.stepUntilFinish())
+            return -1L;
+        scheduler.printCarStates();
+        return scheduler.getSystemScheduleTime();
+    }
+
+    public Long scheduleTest2(int carFlow1, double threshold1, int carFlow2, double threshold2) {
+        scheduler.reset();
+        updateGraphEdge();
+
+        HashMap<Integer, Integer> carPlanTime = new HashMap<>();
+        HashMap<Long, Integer> presetCarMap = new HashMap<>();
+
+        cars.forEach((carId, car) -> {
+            carPlanTime.put(carId, car.getPlanTime());
+            // 先把预设车辆放入车库
+            if (car.isPreset()) {
+                scheduler.addToGarage(car);
+                presetCarMap.put(car.getStartTime(), presetCarMap.get(car.getStartTime()) == null ? 1 : (presetCarMap.get(car.getStartTime()) + 1));
+            }
+        });
+
+        long time = 0;
+        int count = 0;
+        boolean haveCarLeft = true;
+        boolean deadlock = false;
+        double busyPathThreshold;
+        int carFlowLimit;
+
+        int rollbackThrottle = 5;
+        int rollbackThrottleCount = rollbackThrottle;
+
+        int carOnRoadLimit = -1;
+
+        boolean once = true;
+
+        HashMap<Integer, ArrayList<Car>> carCrossMap = distributedOrder(false);
+
+        System.out.println("Start to schedule");
+
+        while (haveCarLeft) {
+            time++;
+
+            count = 0;
+            if (presetCarMap.get(time) != null) {
+                count = presetCarMap.get(time);
+            }
+
+            if (!deadlock) {
+                if (scheduler.havePriorityCarOnRoad()) {
+                    carFlowLimit = carFlow1;
+                    busyPathThreshold = threshold1;
+                } else {
+                    carFlowLimit = carFlow2;
+                    busyPathThreshold = threshold2;
+                    if (once) {
+                        carOnRoadLimit = 9999; // 当没有优先车的时候重置
+                        rollbackThrottle = 5;
+                        once = false;
+                    }
+                }
+
+            } else {
+                carFlowLimit = 1;
+                busyPathThreshold = 1;
+                if (rollbackThrottleCount == 0) {
+                    deadlock = false;
+                    rollbackThrottleCount = 5;
+                }
+                rollbackThrottleCount--;
+            }
+            if (carOnRoadLimit != -1 && Scheduler.carStateCounter.get(CarState.END) > carOnRoadLimit) {
+                carFlowLimit = 15;
+                busyPathThreshold = 0.3;
+            }
+
+            boolean changed = true;
+            while (changed) {
+
                 if (count >= carFlowLimit)
                     break;
                 changed = false;
@@ -483,6 +628,7 @@ public class TrafficMap {
                             break;
                         }
                     }
+
                     if (hasBusyPath && !car.isPriority()) {
                         continue;
                     }
@@ -494,12 +640,12 @@ public class TrafficMap {
                     count++;
                     changed = true;
                 }
-
             }
+
 
             if (!scheduler.step()) {
                 System.err.println("Deadlock happened, start rollback");
-                carOnRoadLimit = Scheduler.carStateCounter.get(CarState.END) + 100;
+                carOnRoadLimit = Scheduler.carStateCounter.get(CarState.END) + 200;
                 time = autoRollback();
                 if (time < 0L)
                     return -1L;
@@ -508,13 +654,15 @@ public class TrafficMap {
                 rollbackThrottle++;
             }
             updateGraphEdge();
-//            System.out.print("count " + count + " ");
-//            scheduler.printCarStates();
+            System.out.print("count " + count + " ");
+            scheduler.printCarStates();
             haveCarLeft = false;
             for (ArrayList<Car> carList : carCrossMap.values()) {
                 if (carList.size() != 0)
                     haveCarLeft = true;
             }
+            if (Scheduler.carStateCounter.get(CarState.END) != 0)
+                haveCarLeft = true;
         }
 
         if (!scheduler.stepUntilFinish())
@@ -522,6 +670,149 @@ public class TrafficMap {
         scheduler.printCarStates();
         return scheduler.getSystemScheduleTime();
     }
+
+    public Long scheduleTest3(int carFlow1, double threshold1, int carFlow2, double threshold2) {
+        scheduler.reset();
+        updateGraphEdge();
+
+        HashMap<Integer, Integer> carPlanTime = new HashMap<>();
+        HashMap<Long, Integer> presetCarMap = new HashMap<>();
+
+        ArrayList<Car> carList = new ArrayList<>();
+
+        cars.forEach((carId, car) -> {
+            carPlanTime.put(carId, car.getPlanTime());
+            // 先把预设车辆放入车库
+            if (car.isPreset()) {
+                scheduler.addToGarage(car);
+                presetCarMap.put(car.getStartTime(), presetCarMap.get(car.getStartTime()) == null ? 1 : (presetCarMap.get(car.getStartTime()) + 1));
+            } else
+                carList.add(car);
+        });
+
+        carList.sort(Car.prioritySpeedComparator);
+
+        long time = 0;
+        int count = 0;
+
+        boolean deadlock = false;
+        double busyPathThreshold;
+        int carFlowLimit;
+
+        int rollbackThrottle = 5;
+        int rollbackThrottleCount = rollbackThrottle;
+
+        int carOnRoadLimit = -1;
+
+        boolean once = true;
+
+
+        System.out.println("Start to schedule");
+
+        while (true) {
+            time++;
+            count = 0;
+            if (presetCarMap.get(time) != null) {
+                count = presetCarMap.get(time);
+            }
+
+            if (!deadlock) {
+                if (scheduler.havePriorityCarOnRoad()) {
+                    carFlowLimit = carFlow1;
+                    busyPathThreshold = threshold1;
+                } else {
+                    carFlowLimit = carFlow2;
+                    busyPathThreshold = threshold2;
+                    if (once) {
+                        carOnRoadLimit = 9999; // 当没有优先车的时候重置
+                        rollbackThrottle = 5;
+                        once = false;
+                    }
+                }
+
+            } else {
+                carFlowLimit = 1;
+                busyPathThreshold = 1;
+                if (rollbackThrottleCount == 0) {
+                    deadlock = false;
+                    rollbackThrottleCount = 5;
+                }
+                rollbackThrottleCount--;
+            }
+            if (carOnRoadLimit != -1 && Scheduler.carStateCounter.get(CarState.END) > carOnRoadLimit) {
+                carFlowLimit = 15;
+                busyPathThreshold = 0.3;
+            }
+            int searchCount = 0;
+            Iterator<Car> carIterator = carList.iterator();
+            while (carIterator.hasNext()) {
+                searchCount++;
+                if (searchCount > 5000)
+                    break;
+                if (count >= carFlowLimit)
+                    break;
+
+                Car car = carIterator.next();
+
+                if (carPlanTime.get(car.getId()) > time)
+                    continue;
+
+                GraphPath path = shortestDistancePath(graph, car.getFrom(), car.getTo());
+
+                boolean hasBusyPath = false;
+                for (Object edge : path.getEdgeList()) {
+                    if (((RoadEdge) edge).calculateLoad() > busyPathThreshold) {
+                        hasBusyPath = true;
+                        break;
+                    }
+                }
+                if (hasBusyPath && !car.isPriority()) {
+                    continue;
+                }
+
+                setCarPath(car, path);
+                car.setStartTime(time);
+                scheduler.addToGarage(car);
+                carIterator.remove();
+                count++;
+            }
+
+            int carOnRoadCount = Scheduler.carStateCounter.get(CarState.END);
+            if (!scheduler.step()) {
+                System.err.println("Deadlock happened, start rollback");
+//                System.exit(-1);
+                carOnRoadLimit = carOnRoadCount - 50;
+
+                time = autoRollback();
+                if (time < 0L)
+                    return -1L;
+                deadlock = true;
+                rollbackThrottle++;
+
+                carList.clear();
+                cars.forEach((carId, car) -> {
+                    carPlanTime.put(carId, car.getPlanTime());
+                    // 先把预设车辆放入车库
+                    if (!car.isPreset() && car.getStartTime() == -1)
+                        carList.add(car);
+                });
+
+                carList.sort(Car.prioritySpeedComparator);
+
+            }
+            updateGraphEdge();
+            System.out.print("count " + count + " ");
+            scheduler.printCarStates();
+            if (carList.isEmpty())
+                break;
+        }
+
+        if (!scheduler.stepUntilFinish())
+            return -1L;
+        scheduler.printCarStates();
+        return scheduler.getSystemScheduleTime();
+    }
+
 
     public long preSchedule1(int carFlowLimit) {
         scheduler.reset();
@@ -730,27 +1021,31 @@ public class TrafficMap {
         TreeMap<Integer, Integer> roadCounter = new TreeMap<>();
 
         ArrayList<Car> carList = new ArrayList<>();
-        cars.forEach((carId, car) -> {
-            if (!car.isPreset()) {
-                carList.add(car);
-            }
-        });
-        carList.sort(Car.speedComparator);
 
-        while (!carList.isEmpty()) {
+        cars.forEach((carId, car) -> {
+            if (!car.isPreset())
+                carList.add(car);
+        });
+
+        carList.sort(Car.prioritySpeedComparator);
+
+        while (true) {
             time++;
             count = 0;
-            Iterator iterator = carList.iterator();
-            while (iterator.hasNext()) {
-                Car car = (Car) iterator.next();
 
-                if (car.getPlanTime() > time)
-                    continue;
+            Iterator<Car> carIterator = carList.iterator();
+            while (carIterator.hasNext()) {
 
                 if (count >= carFlowLimit)
                     break;
 
+                Car car = carIterator.next();
+
+                if (car.getPlanTime() > time)
+                    continue;
+
                 GraphPath path = shortestDistancePath(graph, car.getFrom(), car.getTo());
+
 
                 // 计算每一时间单位最忙的路
                 car.getPath().forEach(road -> {
@@ -765,14 +1060,17 @@ public class TrafficMap {
                 setCarPath(car, path);
                 car.setStartTime(time);
                 scheduler.addToGarage(car);
-                iterator.remove();
+                carIterator.remove();
                 count++;
-
             }
-            if (!scheduler.step())
-                return -1L;
-        }
 
+            if (!scheduler.step()) {
+                return -1L;
+            }
+            updateGraphEdge();
+            if (carList.isEmpty())
+                break;
+        }
         if (!scheduler.stepUntilFinish())
             return -1L;
         scheduler.printCarStates();

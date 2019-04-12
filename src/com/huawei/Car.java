@@ -95,6 +95,20 @@ public class Car implements Comparable<Car> {
         }
     };
 
+    public static Comparator<Car> pathLengthComparator = new Comparator<Car>() {
+        @Override
+        public int compare(Car car1, Car car2) {
+            return Integer.compare(car1.getPath().size(),car2.getPath().size());
+        }
+    };
+
+    public static Comparator<Car> startTimeComparator = new Comparator<Car>() {
+        @Override
+        public int compare(Car car1, Car car2) {
+            return Long.compare(car1.getStartTime(),car2.getStartTime());
+        }
+    };
+
     public Car(int id, int start, int to, int topSpeed, int planTime, boolean priority, boolean preset) {
         this.id = id;
         this.from = start;

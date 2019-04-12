@@ -57,6 +57,7 @@ public class Scheduler {
             Set priorityCarStartDistribute = new HashSet();
             Set priorityCarEndDistribute = new HashSet();
 
+            int priorityCarCount = 0;
 
             for (Car car : carMap.values()) {
                 if (car.isPriority() && car.getPlanTime() < minPlanTimeOfPriorityCars)
@@ -74,6 +75,7 @@ public class Scheduler {
                 if (car.isPriority()) {
                     priorityCarStartDistribute.add(car.getFrom());
                     priorityCarEndDistribute.add(car.getTo());
+                    priorityCarCount++;
                 }
             }
 
@@ -89,13 +91,15 @@ public class Scheduler {
                     formatFive(allCarStartDistribute.size() * 1.0 / priorityCarStartDistribute.size()) * 0.05 +
                     formatFive(allCarEndDistribute.size() * 1.0 / priorityCarEndDistribute.size()) * 0.05;
 
+            System.out.println("优先车辆最早计划时间: "+ minPlanTimeOfPriorityCars);
 
             System.out.println("优先车辆调度时间: " + (specialScheduleTime - minPlanTimeOfPriorityCars));
             System.out.println("优先车辆总调度时间: " + totalSpecialScheduleTime);
             System.out.println("原系统调度时间: " + systemScheduleTime);
             System.out.println("原所有车辆实际总调度时间: " + totalScheduleTime);
             System.out.println("系统调度时间: " + Math.round(systemScheduleTime + factorA * (specialScheduleTime - minPlanTimeOfPriorityCars)));
-            System.out.println("所有车辆实际总调度时间: " +(totalScheduleTime + formatFive(factorB) * totalSpecialScheduleTime));
+            System.out.println("所有车辆实际总调度时间: " + (totalScheduleTime + formatFive(factorB) * totalSpecialScheduleTime));
+
         }
     }
 
@@ -154,6 +158,7 @@ public class Scheduler {
 
         return true;
     }
+
 
 //    public boolean step(TrafficMap trafficMap) {
 //        //系统调度时间
@@ -459,18 +464,12 @@ public class Scheduler {
     }
 
     public void printDeadLockRoads() {
-        System.out.print("DeadLock position = [");
+        System.out.println("Deadlock road status: ");
         for (Road road : roadMap.values()) {
             if (road.getCarSequenceList(road.getEnd()).size() != 0) {
-                System.out.print(road.getId() + ", ");
-            }
-            if (road.isBidirectional()) {
-                if (road.getCarSequenceList(road.getStart()).size() != 0) {
-                    System.out.print(road.getId() + ", ");
-                }
+                System.out.println("Road "+road.getId()+" load "+road.calculateLoad());
             }
         }
-        System.out.println("]");
     }
 
     public boolean havePresetCarOnRoad() {
@@ -492,17 +491,14 @@ public class Scheduler {
     }
 
     public long resetDeadlockedCars() {
-        ArrayList<Car> deadlockCarList = new ArrayList<>();
-        long minTime = 9999L;
+        ArrayList<Long> timeList = new ArrayList<>();
         for (Road road : roadMap.values()) {
             ArrayList<Car> list = road.getCarSequenceList(road.getEnd());
             if (list.size() != 0) {
                 for (Car car : list) {
                     if (!car.isPriority() && !car.isPreset()) {
-                        if (car.getStartTime() < minTime)
-                            minTime = car.getStartTime();
+                        timeList.add(car.getStartTime());
                         car.resetCarState();
-                        deadlockCarList.add(car);
                     }
                 }
             }
@@ -511,16 +507,36 @@ public class Scheduler {
                 if (list.size() != 0) {
                     for (Car car : list) {
                         if (!car.isPriority() && !car.isPreset()) {
-                            if (car.getStartTime() < minTime)
-                                minTime = car.getStartTime();
+                            timeList.add(car.getStartTime());
                             car.resetCarState();
-                            deadlockCarList.add(car);
                         }
                     }
                 }
             }
         }
-        return minTime;
+
+        if(timeList.size()==0){
+            // 极少发生的情况，由预设车或优先车导致的死锁
+            for (Road road : roadMap.values()) {
+                ArrayList<Car> list = road.getCarSequenceList(road.getEnd());
+                if (list.size() != 0) {
+                    for (Car car : list) {
+                            timeList.add(car.getStartTime());
+                        }
+                    }
+
+                if (road.isBidirectional()) {
+                    list = road.getCarSequenceList(road.getStart());
+                    if (list.size() != 0) {
+                        for (Car car : list) {
+                                timeList.add(car.getStartTime());
+                            }
+                        }
+                    }
+            }
+        }
+        Collections.sort(timeList);
+        return timeList.get(0);
     }
 
 }

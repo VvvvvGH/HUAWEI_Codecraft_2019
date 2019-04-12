@@ -4,7 +4,7 @@ import org.jgrapht.graph.DefaultWeightedEdge;
 
 import java.util.ArrayList;
 
-public class RoadEdge extends DefaultWeightedEdge  {
+public class RoadEdge extends DefaultWeightedEdge {
 
     protected Road road;
     protected CrossRoads from;
@@ -38,15 +38,19 @@ public class RoadEdge extends DefaultWeightedEdge  {
         if (before != 99999)
             weightBefore = before;
 
-        if (calculateLoad() > 0.80)
+        if (calculateLoad() > 0.8)
             return 99999;
 
         return weightBefore;
     }
 
-
     public double calculateLoad() {
         double capacity = road.getNumOfLanes() * road.getLen();
+
+        return calculateCarCount() / (capacity * 1.0);
+    }
+
+    public int calculateCarCount() {
         int numberOfCar = 0;
 
         ArrayList<Lane> laneList;
@@ -62,6 +66,6 @@ public class RoadEdge extends DefaultWeightedEdge  {
         for (Lane lane : laneList) {
             numberOfCar += lane.getCarMap().size();
         }
-        return numberOfCar / (capacity * 1.0);
+        return numberOfCar;
     }
 }
